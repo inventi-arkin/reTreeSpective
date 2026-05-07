@@ -89,12 +89,12 @@
     import { 
       TreePine, LayoutDashboard, Settings, UserCircle, Plus,
       Leaf, Menu, LogOut, Loader2, ChevronDown, Trash2,
-      Star, Sprout, Wind, Crown
+      Star, Sprout, Wind, Crown, Users
     } from 'lucide-react';
     import { initializeApp } from 'firebase/app';
     import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut, signInWithCustomToken } from 'firebase/auth';
     import { 
-      getFirestore, collection, onSnapshot, addDoc, setDoc, doc, deleteDoc 
+      getFirestore, collection, onSnapshot, addDoc, setDoc, doc, deleteDoc, updateDoc 
     } from 'firebase/firestore';
 
     // Your custom Firebase configuration
@@ -332,6 +332,8 @@
       const [newKudoText, setNewKudoText] = useState('');
       
       const [filterAuthorId, setFilterAuthorId] = useState('');
+      const [isManagingParticipants, setIsManagingParticipants] = useState(false);
+      const [tempParticipants, setTempParticipants] = useState([]);
 
       useEffect(() => {
         const initAuth = async () => {
@@ -405,8 +407,13 @@
       const displayedBadFeedbacks = filterAuthorId ? totalBadFeedbacks.filter(f => f.authorId === filterAuthorId) : totalBadFeedbacks;
 
       const currentKudos = kudos.filter(k => k.sprintId === selectedSprintId);
+      const activeSprint = sprints.find(s => s.id === selectedSprintId);
       
-      const gardeners = usersList.map(u => {
+      // Sprint Participant Filtering
+      const activeParticipantIds = activeSprint?.participants || [];
+      const activeGardenersList = usersList.filter(u => activeParticipantIds.includes(u.uid));
+      
+      const gardeners = activeGardenersList.map(u => {
         const userKudos = currentKudos.filter(k => k.toUserId === u.uid);
         const totalStars = userKudos.reduce((sum, k) => sum + k.stars, 0);
         return { ...u, stars: totalStars };
@@ -456,9 +463,19 @@
         if (!newSprintName.trim() || !user) return;
         try {
           const sprintsRef = collection(db, 'artifacts', appId, 'public', 'data', 'sprints');
-          const docRef = await addDoc(sprintsRef, { name: newSprintName, createdAt: Date.now(), createdBy: user.uid });
+          // Add the creator as the default first participant
+          const docRef = await addDoc(sprintsRef, { name: newSprintName, createdAt: Date.now(), createdBy: user.uid, participants: [user.uid] });
           setNewSprintName(''); setIsCreatingSprint(false); setSelectedSprintId(docRef.id);
         } catch (err) { console.error(err); }
+      };
+
+      const saveParticipants = async () => {
+        if (!selectedSprintId) return;
+        try {
+          const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'sprints', selectedSprintId);
+          await updateDoc(docRef, { participants: tempParticipants });
+          setIsManagingParticipants(false);
+        } catch (err) { console.error("Error saving participants:", err); }
       };
 
       const addFeedback = async (e) => {
@@ -551,6 +568,42 @@
             </div>
           </header>
 
+          {/* Manage Participants Modal */}
+          {isManagingParticipants && (
+            <div className="fixed inset-0 bg-stone-900/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+              <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 max-h-[80vh] flex flex-col">
+                <h2 className="text-xl font-bold text-emerald-900 mb-2 flex items-center gap-2">
+                  <Users size={20} className="text-emerald-600" /> Sprint Team
+                </h2>
+                <p className="text-sm text-stone-500 mb-4">Select the members participating in this sprint. They will appear in the Sprint Garden and Kudos lists.</p>
+                
+                <div className="overflow-y-auto flex-1 border border-stone-200 rounded-xl p-2 space-y-1 bg-stone-50">
+                   {usersList.map(u => (
+                     <label key={u.uid} className="flex items-center space-x-3 p-3 hover:bg-white rounded-lg cursor-pointer transition-colors border border-transparent hover:border-stone-200">
+                       <input
+                         type="checkbox"
+                         checked={tempParticipants.includes(u.uid)}
+                         onChange={(e) => {
+                           if (e.target.checked) setTempParticipants([...tempParticipants, u.uid]);
+                           else setTempParticipants(tempParticipants.filter(id => id !== u.uid));
+                         }}
+                         className="rounded text-emerald-600 focus:ring-emerald-500 w-4 h-4 cursor-pointer"
+                       />
+                       {u.photoURL ? <img src={u.photoURL} className="w-8 h-8 rounded-full border border-stone-200" /> : <UserCircle size={32} className="text-stone-400"/>}
+                       <span className="text-sm font-semibold text-stone-700">{u.displayName}</span>
+                     </label>
+                   ))}
+                   {usersList.length === 0 && <p className="text-center text-stone-400 text-sm py-4">No registered users found.</p>}
+                </div>
+                
+                <div className="mt-6 flex justify-end gap-3 pt-4 border-t border-stone-100">
+                   <button onClick={() => setIsManagingParticipants(false)} className="px-4 py-2 font-medium text-stone-500 hover:text-stone-700 hover:bg-stone-100 rounded-lg transition-colors">Cancel</button>
+                   <button onClick={saveParticipants} className="px-4 py-2 font-medium bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors shadow-sm">Save Team</button>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Sprint Bar */}
           <div className="bg-white border-b border-stone-200 px-6 py-3 shadow-sm sticky top-[72px] z-10">
             <div className="max-w-[1600px] mx-auto flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -579,7 +632,7 @@
                       <div className="relative group">
                         <select value={filterAuthorId} onChange={(e) => setFilterAuthorId(e.target.value)} className="appearance-none bg-white border border-stone-200 text-stone-600 text-sm py-1.5 pl-3 pr-8 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer w-[130px] sm:w-auto">
                           <option value="">All Authors</option>
-                          {usersList.map(u => <option key={u.uid} value={u.uid}>{u.displayName?.split(' ')[0]}</option>)}
+                          {activeGardenersList.map(u => <option key={u.uid} value={u.uid}>{u.displayName?.split(' ')[0]}</option>)}
                         </select>
                         <ChevronDown size={14} className="absolute right-2 top-1/2 -translate-y-1/2 text-stone-400 pointer-events-none" />
                       </div>
@@ -587,11 +640,19 @@
                   </>
                 )}
               </div>
-              {!isCreatingSprint && (
-                <button onClick={() => setIsCreatingSprint(true)} className="flex items-center space-x-1 text-sm font-medium text-emerald-600 hover:text-emerald-700 bg-emerald-50 px-3 py-1.5 rounded-md w-fit">
-                  <Plus size={16} /><span>New Sprint</span>
-                </button>
-              )}
+              
+              <div className="flex items-center space-x-2">
+                {!isCreatingSprint && selectedSprintId && (
+                  <button onClick={() => { setTempParticipants(activeSprint?.participants || []); setIsManagingParticipants(true); }} className="flex items-center space-x-1 text-sm font-medium text-blue-600 hover:text-blue-700 bg-blue-50 px-3 py-1.5 rounded-md w-fit transition-colors">
+                    <Users size={16} /><span>Team</span>
+                  </button>
+                )}
+                {!isCreatingSprint && (
+                  <button onClick={() => setIsCreatingSprint(true)} className="flex items-center space-x-1 text-sm font-medium text-emerald-600 hover:text-emerald-700 bg-emerald-50 px-3 py-1.5 rounded-md w-fit transition-colors">
+                    <Plus size={16} /><span>New Sprint</span>
+                  </button>
+                )}
+              </div>
             </div>
           </div>
 
@@ -716,7 +777,7 @@
                         <div className="flex gap-2">
                           <select value={newKudoReceiver} onChange={(e) => setNewKudoReceiver(e.target.value)} className="flex-1 bg-white border border-stone-200 rounded-lg px-2 py-2 text-sm focus:outline-none focus:border-blue-400" required>
                             <option value="">Select colleague...</option>
-                            {usersList.filter(u => u.uid !== user.uid).map(u => <option key={u.uid} value={u.uid}>{u.displayName}</option>)}
+                            {activeGardenersList.filter(u => u.uid !== user.uid).map(u => <option key={u.uid} value={u.uid}>{u.displayName}</option>)}
                           </select>
                           <select value={newKudoStars} onChange={(e) => setNewKudoStars(Number(e.target.value))} className="w-16 bg-white border border-stone-200 rounded-lg px-2 py-2 text-sm focus:outline-none focus:border-blue-400">
                             {[5,4,3,2,1].map(n => <option key={n} value={n}>{n} ★</option>)}
