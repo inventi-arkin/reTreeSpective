@@ -92,7 +92,7 @@
       Star, Sprout, Wind, Crown
     } from 'lucide-react';
     import { initializeApp } from 'firebase/app';
-    import { getAuth, GoogleAuthProvider, signInWithPopup, signInAnonymously, onAuthStateChanged, signOut, signInWithCustomToken } from 'firebase/auth';
+    import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut, signInWithCustomToken } from 'firebase/auth';
     import { 
       getFirestore, collection, onSnapshot, addDoc, setDoc, doc, deleteDoc 
     } from 'firebase/firestore';
@@ -332,7 +332,7 @@
               const userRef = doc(db, 'artifacts', appId, 'public', 'data', 'users', currentUser.uid);
               await setDoc(userRef, {
                 uid: currentUser.uid,
-                displayName: currentUser.displayName || 'Guest User',
+                displayName: currentUser.displayName || currentUser.email?.split('@')[0] || 'User',
                 photoURL: currentUser.photoURL || ''
               }, { merge: true });
             } catch (err) {
@@ -404,7 +404,15 @@
       const handleGoogleLogin = async () => {
         setAuthError('');
         try { 
-          await signInWithPopup(auth, new GoogleAuthProvider()); 
+          const result = await signInWithPopup(auth, new GoogleAuthProvider()); 
+          const email = result.user?.email || '';
+          
+          // Validate domain
+          if (!(email.endsWith('@inventi.ph') || email.endsWith('@inventi.asia'))) {
+            await signOut(auth); // Immediately sign them out
+            setAuthError("Access denied. Only @inventi.ph or @inventi.asia email addresses are allowed.");
+            return;
+          }
         } 
         catch (error) { 
           console.error("Error signing in:", error); 
@@ -413,17 +421,6 @@
           } else {
             setAuthError(error.message);
           }
-        }
-      };
-
-      const handleAnonymousLogin = async () => {
-        setAuthError('');
-        try { 
-          await signInAnonymously(auth); 
-        } 
-        catch (error) { 
-          console.error("Error signing in as guest:", error); 
-          setAuthError(error.message);
         }
       };
 
@@ -449,7 +446,7 @@
           const feedbacksRef = collection(db, 'artifacts', appId, 'public', 'data', 'feedbacks');
           await addDoc(feedbacksRef, {
             sprintId: selectedSprintId, type: newFeedbackType, text: newFeedbackText,
-            authorId: user.uid, authorName: user.displayName || 'Guest User', authorPhoto: user.photoURL || '', createdAt: Date.now()
+            authorId: user.uid, authorName: user.displayName || user.email?.split('@')[0] || 'User', authorPhoto: user.photoURL || '', createdAt: Date.now()
           });
           setNewFeedbackText('');
         } catch (err) { console.error(err); }
@@ -463,7 +460,7 @@
         try {
           const kudosRef = collection(db, 'artifacts', appId, 'public', 'data', 'kudos');
           await addDoc(kudosRef, {
-            sprintId: selectedSprintId, fromUserId: user.uid, fromUserName: user.displayName || 'Guest User', fromUserPhoto: user.photoURL || '',
+            sprintId: selectedSprintId, fromUserId: user.uid, fromUserName: user.displayName || user.email?.split('@')[0] || 'User', fromUserPhoto: user.photoURL || '',
             toUserId: receiver.uid, toUserName: receiver.displayName, toUserPhoto: receiver.photoURL || '', stars: newKudoStars, text: newKudoText, createdAt: Date.now()
           });
           setNewKudoReceiver(''); setNewKudoText(''); setNewKudoStars(5);
@@ -507,20 +504,6 @@
                   <strong>Login Error:</strong> {authError}
                 </div>
               )}
-
-              <div className="mt-6 flex items-center justify-center space-x-4">
-                <div className="h-px bg-stone-200 flex-1"></div>
-                <span className="text-stone-400 text-sm">or</span>
-                <div className="h-px bg-stone-200 flex-1"></div>
-              </div>
-
-              <button 
-                onClick={handleAnonymousLogin}
-                className="w-full mt-6 bg-stone-100 hover:bg-stone-200 text-stone-700 px-6 py-3 rounded-xl font-semibold transition-all duration-200 shadow-sm flex items-center justify-center space-x-3"
-              >
-                <UserCircle className="w-5 h-5 text-stone-500" />
-                <span>Continue as Guest</span>
-              </button>
 
             </div>
           </div>
