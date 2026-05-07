@@ -28,7 +28,6 @@
   <style>
     /* Global Styles */
     body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
-    /* Hide scrollbars for the immersive board effect */
     ::-webkit-scrollbar { display: none; }
     * { -ms-overflow-style: none; scrollbar-width: none; }
     
@@ -38,6 +37,46 @@
       100% { transform: scale(1); opacity: 1; }
     }
     .fruit-pop { animation: popIn 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
+
+    /* WEATHER ANIMATIONS */
+    @keyframes rainfall {
+      0% { transform: translate(0, -50px); opacity: 0; }
+      10% { opacity: var(--drop-opacity, 1); }
+      90% { opacity: var(--drop-opacity, 1); }
+      100% { transform: translate(-150px, 600px); opacity: 0; }
+    }
+    .rain-drop {
+      position: absolute;
+      top: -50px;
+      background: linear-gradient(to bottom, rgba(255,255,255,0), rgba(255,255,255,0.7));
+      width: 2px;
+      height: 60px;
+      animation: rainfall linear infinite;
+      transform: rotate(15deg);
+    }
+    @keyframes lightning-flash {
+      0%, 90% { opacity: 0; }
+      92% { opacity: 0.7; }
+      94% { opacity: 0; }
+      95% { opacity: 0.9; }
+      100% { opacity: 0; }
+    }
+    .lightning {
+      animation: lightning-flash 7s infinite;
+    }
+    @keyframes wind-streak {
+      0% { transform: translateX(120vw); opacity: 0; }
+      10% { opacity: 0.3; }
+      90% { opacity: 0.3; }
+      100% { transform: translateX(-50vw); opacity: 0; }
+    }
+    .wind-streak {
+      position: absolute;
+      height: 2px;
+      background: rgba(255,255,255,0.4);
+      border-radius: 50%;
+      animation: wind-streak linear infinite;
+    }
   </style>
 </head>
 <body class="bg-stone-50">
@@ -45,7 +84,7 @@
 
   <!-- Main Application Logic -->
   <script type="text/babel" data-type="module">
-    import React, { useState, useEffect } from 'react';
+    import React, { useState, useEffect, useMemo } from 'react';
     import { createRoot } from 'react-dom/client';
     import { 
       TreePine, LayoutDashboard, Settings, UserCircle, Plus,
@@ -91,10 +130,54 @@
 
     // --- VISUALIZATION COMPONENTS ---
 
+    const WeatherOverlay = ({ isWindy, isRainy, isStormy }) => {
+      if (!isWindy) return null;
+
+      const dropsCount = isStormy ? 90 : (isRainy ? 35 : 0);
+      const windStreaksCount = isStormy ? 15 : (isWindy ? 8 : 0);
+
+      // Memoize the random values so they don't jitter when users type in input fields
+      const drops = useMemo(() => Array.from({ length: 90 }).map(() => ({
+        left: `${Math.random() * 150}%`,
+        '--drop-opacity': Math.random() * 0.5 + 0.3,
+        animationDuration: `${0.3 + Math.random() * 0.4}s`,
+        animationDelay: `${Math.random() * 2}s`
+      })), []);
+
+      const streaks = useMemo(() => Array.from({ length: 15 }).map(() => ({
+        top: `${Math.random() * 80}%`,
+        width: `${50 + Math.random() * 200}px`,
+        animationDuration: `${1 + Math.random() * 1.5}s`,
+        animationDelay: `${Math.random() * 3}s`,
+      })), []);
+
+      return (
+        <div className="absolute inset-0 z-[25] pointer-events-none overflow-hidden rounded-xl">
+          {isStormy && <div className="absolute inset-0 bg-white mix-blend-overlay lightning"></div>}
+          
+          {isWindy && streaks.slice(0, windStreaksCount).map((style, i) => (
+            <div key={`wind-${i}`} className="wind-streak" style={style}></div>
+          ))}
+
+          {(isRainy || isStormy) && drops.slice(0, dropsCount).map((style, i) => (
+            <div key={`rain-${i}`} className="rain-drop" style={style}></div>
+          ))}
+        </div>
+      );
+    };
+
     const TreeOfProgress = ({ goodCount, badCount }) => {
       const rawScore = goodCount - badCount;
       const score = Math.max(0, rawScore);
       
+      const isRainy = rawScore <= -2;
+      const isStormy = rawScore <= -4;
+
+      // Darken ground visually during storms
+      const grassFill = isStormy ? "#064e3b" : (isRainy ? "#14532d" : "#22c55e");
+      const dirtFill = isStormy ? "#451a03" : (isRainy ? "#78350f" : "#8B4513");
+      const seedFill = isStormy ? "#78350f" : "#d97706";
+
       const trunkHeight = score === 0 ? 0 : Math.min(50, 10 + score * 4);
       const trunkWidth = score === 0 ? 0 : Math.min(16, 4 + score * 1.2);
       const canopySize = score === 0 ? 0 : Math.min(42, 12 + score * 3.5);
@@ -114,11 +197,11 @@
       return (
         <div className="relative w-full h-full flex items-end justify-center drop-shadow-2xl">
           <svg viewBox="0 0 100 100" className="w-full h-full overflow-visible" preserveAspectRatio="xMidYMax meet">
-            <path d="M -300 85 Q 50 65 400 85 L 400 120 L -300 120 Z" fill="#8B4513" opacity="0.6" />
-            <path d="M -300 88 Q 50 75 400 88 L 400 120 L -300 120 Z" fill="#22c55e" opacity="0.9" />
+            <path d="M -300 85 Q 50 65 400 85 L 400 120 L -300 120 Z" fill={dirtFill} opacity="0.6" className="transition-colors duration-1000" />
+            <path d="M -300 88 Q 50 75 400 88 L 400 120 L -300 120 Z" fill={grassFill} opacity="0.9" className="transition-colors duration-1000" />
 
-            <ellipse cx="50" cy="85" rx={score === 0 ? 5 : 0} ry={score === 0 ? 3 : 0} fill="#d97706" className="transition-all duration-1000 ease-in-out" />
-            <path d="M 50 85 Q 55 80 58 75 Q 53 78 50 85 Z" fill="#16a34a" style={{ opacity: score === 0 ? 1 : 0, transition: 'all 1s ease-in-out' }} />
+            <ellipse cx="50" cy="85" rx={score === 0 ? 5 : 0} ry={score === 0 ? 3 : 0} fill={seedFill} className="transition-all duration-1000 ease-in-out" />
+            <path d="M 50 85 Q 55 80 58 75 Q 53 78 50 85 Z" fill="#16a34a" style={{ opacity: score === 0 && !isStormy ? 1 : 0, transition: 'all 1s ease-in-out' }} />
 
             <rect
               x={50 - trunkWidth / 2} y={85 - trunkHeight} width={trunkWidth} height={trunkHeight}
@@ -149,30 +232,30 @@
       const level = Math.floor(stars / 3); 
       
       return (
-        <div className="relative flex flex-col items-center group w-24 mb-10 cursor-pointer">
-          <div className={`relative flex flex-col items-center transition-all duration-500 ease-out transform group-hover:-translate-y-4 group-hover:scale-110 z-20 ${level >= 4 ? 'drop-shadow-[0_0_15px_rgba(250,204,21,0.6)]' : ''}`}>
+        <div className="relative flex flex-col items-center group w-20 mb-8 cursor-pointer">
+          <div className={`relative flex flex-col items-center transition-all duration-500 ease-out transform group-hover:-translate-y-2 group-hover:scale-110 z-20 ${level >= 4 ? 'drop-shadow-[0_0_15px_rgba(250,204,21,0.6)]' : ''}`}>
             
-            <div className="absolute -top-7 z-30 transition-all duration-700 animate-bounce" style={{ opacity: level >= 3 ? 1 : 0, transform: `scale(${level >= 3 ? 1 : 0})` }}>
-              <Crown size={26} className="text-yellow-400 fill-yellow-400 drop-shadow-md" />
+            <div className="absolute -top-5 z-30 transition-all duration-700 animate-bounce" style={{ opacity: level >= 3 ? 1 : 0, transform: `scale(${level >= 3 ? 1 : 0})` }}>
+              <Crown size={20} className="text-yellow-400 fill-yellow-400 drop-shadow-md" />
             </div>
 
-            <div className="absolute -top-3 z-20 transition-all duration-700 origin-bottom" style={{ opacity: level >= 1 && level < 3 ? 1 : 0, transform: `scale(${level >= 1 && level < 3 ? 1 : 0.5})` }}>
-              <svg width="56" height="24" viewBox="0 0 100 50" className="drop-shadow-sm">
+            <div className="absolute -top-2 z-20 transition-all duration-700 origin-bottom" style={{ opacity: level >= 1 && level < 3 ? 1 : 0, transform: `scale(${level >= 1 && level < 3 ? 1 : 0.5})` }}>
+              <svg width="46" height="20" viewBox="0 0 100 50" className="drop-shadow-sm">
                 <ellipse cx="50" cy="40" rx="45" ry="10" fill="#d97706" />
                 <path d="M 25 40 Q 50 -10 75 40 Z" fill="#b45309" />
               </svg>
             </div>
 
-            <div className={`relative w-14 h-14 rounded-full flex items-center justify-center bg-white z-10 border-[3px] shadow-sm ${level >= 4 ? 'border-yellow-400' : 'border-stone-200'}`}>
+            <div className={`relative w-10 h-10 rounded-full flex items-center justify-center bg-white z-10 border-[2px] shadow-sm ${level >= 4 ? 'border-yellow-400' : 'border-stone-200'}`}>
               {user.photoURL ? (
                 <img src={user.photoURL} alt="" className="w-full h-full rounded-full object-cover" />
               ) : (
-                <UserCircle size={44} className="text-stone-300" />
+                <UserCircle size={32} className="text-stone-300" />
               )}
             </div>
 
-            <div className="relative -mt-3 z-0">
-              <svg width="60" height="70" viewBox="0 0 50 60" className="drop-shadow-md">
+            <div className="relative -mt-2 z-0">
+              <svg width="45" height="52" viewBox="0 0 50 60" className="drop-shadow-md">
                 <path d="M 15 15 Q 0 30 10 45" fill="none" stroke="#a7f3d0" strokeWidth="6" strokeLinecap="round" />
                 <path d={level >= 2 ? "M 35 15 Q 55 20 45 35" : "M 35 15 Q 50 30 40 45"} fill="none" stroke="#a7f3d0" strokeWidth="6" strokeLinecap="round" className="transition-all duration-500 ease-out"/>
                 <path d="M 20 35 L 18 55 M 30 35 L 32 55" fill="none" stroke="#1e3a8a" strokeWidth="6" strokeLinecap="round" />
@@ -183,22 +266,22 @@
                 <rect x="30" y="10" width="3" height="12" fill="#2563eb" />
               </svg>
 
-              <div className="absolute top-6 -right-3 w-8 h-8 bg-emerald-100 rounded-full border-2 border-white flex items-center justify-center transition-all duration-700 z-30 shadow-md" style={{ opacity: level >= 2 ? 1 : 0, transform: `scale(${level >= 2 ? 1 : 0}) rotate(15deg)` }}>
-                <Sprout size={16} className="text-emerald-600" />
+              <div className="absolute top-4 -right-2 w-6 h-6 bg-emerald-100 rounded-full border border-white flex items-center justify-center transition-all duration-700 z-30 shadow-md" style={{ opacity: level >= 2 ? 1 : 0, transform: `scale(${level >= 2 ? 1 : 0}) rotate(15deg)` }}>
+                <Sprout size={12} className="text-emerald-600" />
               </div>
             </div>
+            
+            <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-8 h-2 bg-emerald-900/20 rounded-full blur-[2px] z-[-1] transition-all duration-500 group-hover:w-6 group-hover:opacity-30"></div>
           </div>
           
-          <div className="absolute -bottom-6 flex flex-col items-center transition-all duration-500 opacity-90 group-hover:opacity-100 group-hover:translate-y-2 z-30 pointer-events-none">
-            <span className="text-xs font-bold text-stone-800 tracking-wide bg-white/95 px-2.5 py-0.5 rounded-full shadow-sm border border-stone-200 whitespace-nowrap">
+          <div className="absolute -bottom-8 flex flex-col items-center transition-all duration-500 opacity-80 group-hover:opacity-100 group-hover:translate-y-1 z-30 pointer-events-none">
+            <span className="text-[10px] font-bold text-stone-800 tracking-wide bg-white/95 px-2 py-0.5 rounded-full shadow-sm border border-stone-200 whitespace-nowrap">
               {user.displayName?.split(' ')[0]}
             </span>
-            <div className="flex items-center text-[10px] text-yellow-700 font-bold bg-yellow-100 px-2 py-0.5 rounded-full shadow-sm mt-1 border border-yellow-300">
-              <Star size={10} className="mr-1 fill-yellow-500 text-yellow-500"/> {stars}
+            <div className="flex items-center text-[9px] text-yellow-700 font-bold bg-yellow-100 px-1.5 py-0.5 rounded-full shadow-sm mt-0.5 border border-yellow-300">
+              <Star size={8} className="mr-1 fill-yellow-500 text-yellow-500"/> {stars}
             </div>
           </div>
-          
-          <div className="absolute bottom-10 left-1/2 -translate-x-1/2 w-12 h-3 bg-emerald-900/15 rounded-full blur-[3px] z-0 transition-all duration-500 group-hover:w-8 group-hover:opacity-30"></div>
         </div>
       );
     };
@@ -306,6 +389,17 @@
         const totalStars = userKudos.reduce((sum, k) => sum + k.stars, 0);
         return { ...u, stars: totalStars };
       });
+
+      // Compute Weather State Based on Net Score
+      const netScore = totalGoodFeedbacks.length - totalBadFeedbacks.length;
+      const isWindy = netScore < 0;
+      const isRainy = netScore <= -2;
+      const isStormy = netScore <= -4;
+
+      let skyGradient = "from-sky-200 via-sky-100 to-emerald-50";
+      if (isStormy) skyGradient = "from-slate-800 via-slate-700 to-slate-600";
+      else if (isRainy) skyGradient = "from-slate-500 via-slate-400 to-slate-300";
+      else if (isWindy) skyGradient = "from-slate-300 via-slate-200 to-emerald-50";
 
       const handleGoogleLogin = async () => {
         setAuthError('');
@@ -520,14 +614,21 @@
                         <span className="text-amber-600 flex items-center gap-1"><Wind size={14} strokeWidth={3}/> {totalBadFeedbacks.length}</span>
                       </div>
                     </div>
-                    <div className="relative flex-1 w-full bg-gradient-to-b from-sky-200 via-sky-100 to-emerald-50 rounded-xl overflow-hidden shadow-inner border border-stone-200">
-                      <div className="absolute top-6 left-6 w-16 h-16 bg-yellow-100 rounded-full blur-xl opacity-80 pointer-events-none"></div>
+                    
+                    {/* The Integrated 3D-like Scene With Dynamic Weather */}
+                    <div className={`relative flex-1 w-full bg-gradient-to-b ${skyGradient} rounded-xl overflow-hidden shadow-inner border border-stone-200 transition-colors duration-1000`}>
+                      
+                      <WeatherOverlay isWindy={isWindy} isRainy={isRainy} isStormy={isStormy} />
+
+                      {/* The Sun / Decorative Sky Elements */}
+                      <div className={`absolute top-6 left-6 w-16 h-16 bg-yellow-100 rounded-full blur-xl pointer-events-none transition-opacity duration-1000 ${isWindy ? 'opacity-0' : 'opacity-80'}`}></div>
+                      
                       <div className="absolute bottom-0 left-0 w-full h-[75%] z-10 pointer-events-none flex items-end justify-center">
                         <TreeOfProgress goodCount={totalGoodFeedbacks.length} badCount={totalBadFeedbacks.length} />
                       </div>
                       <div className="absolute inset-0 z-20 overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
                         <div className="min-h-full flex flex-col justify-end pointer-events-none">
-                          <div className="flex flex-wrap justify-center items-end gap-x-6 gap-y-12 p-6 pb-6 pointer-events-auto">
+                          <div className="flex flex-wrap justify-center items-end gap-x-4 gap-y-10 px-6 pt-6 pb-12 pointer-events-auto">
                             {gardeners.sort((a,b) => b.stars - a.stars).map(g => <GardenerAvatar key={g.uid} user={g} stars={g.stars} />)}
                             {gardeners.length === 0 && <div className="text-sky-800/60 text-sm font-medium mb-10 bg-white/50 px-4 py-2 rounded-full border border-white/60 shadow-sm pointer-events-none">Awaiting the first gardener...</div>}
                           </div>
