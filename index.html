@@ -151,6 +151,9 @@
       measurementId: "G-WXE20EK4DF"
     };
 
+    // Define Admin Emails here (these users bypass participant filters and gain moderation powers):
+    const ADMIN_EMAILS = ['admin@inventi.ph', 'arkin.paroan@inventi.ph'];
+
     // Detect if running inside the preview environment or on GitHub
     let firebaseConfig = customFirebaseConfig;
     let appId = 'retreespective-app';
@@ -532,6 +535,9 @@
       const [isManagingParticipants, setIsManagingParticipants] = useState(false);
       const [tempParticipants, setTempParticipants] = useState([]);
 
+      // Check if the current user is an admin based on the array
+      const isAdmin = user?.email && ADMIN_EMAILS.includes(user.email);
+
       // Auto-select sprint if current is invalid or null
       useEffect(() => {
         if (sprints.length > 0 && !sprints.some(s => s.id === selectedSprintId)) {
@@ -580,8 +586,10 @@
         const sprintsRef = collection(db, 'artifacts', appId, 'public', 'data', 'sprints');
         const unsubSprints = onSnapshot(sprintsRef, (snapshot) => {
           let sprintsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-          // Filter sprints to only show those where the user is a participant
-          sprintsData = sprintsData.filter(sprint => sprint.participants?.includes(user.uid));
+          // Filter sprints to only show those where the user is a participant (Admins see all)
+          if (!isAdmin) {
+            sprintsData = sprintsData.filter(sprint => sprint.participants?.includes(user.uid));
+          }
           sprintsData.sort((a, b) => b.createdAt - a.createdAt);
           setSprints(sprintsData);
         }, (err) => console.error(err));
@@ -780,7 +788,10 @@
               <div className="flex items-center space-x-4">
                 <div className="hidden md:flex items-center space-x-3 pr-4 border-r border-emerald-700">
                   {user.photoURL ? <img src={user.photoURL} alt="Profile" className="w-8 h-8 rounded-full border-2 border-emerald-600 shadow-sm" /> : <UserCircle size={28} className="text-emerald-100" />}
-                  <span className="text-sm font-medium">{user.displayName?.split(' ')[0]}</span>
+                  <div className="flex flex-col">
+                    <span className="text-sm font-medium leading-tight">{user.displayName?.split(' ')[0]}</span>
+                    {isAdmin && <span className="text-[10px] text-yellow-300 font-bold uppercase tracking-wider">Admin</span>}
+                  </div>
                 </div>
                 <button onClick={handleLogout} className="text-emerald-200 hover:text-white p-1" title="Sign Out"><LogOut size={20} /></button>
               </div>
@@ -865,7 +876,7 @@
               </div>
               
               <div className="flex items-center space-x-2">
-                {!isCreatingSprint && selectedSprintId && activeSprint?.createdBy === user?.uid && (
+                {!isCreatingSprint && selectedSprintId && (activeSprint?.createdBy === user?.uid || isAdmin) && (
                   <button onClick={() => { setTempParticipants(activeSprint?.participants || []); setIsManagingParticipants(true); }} className="flex items-center space-x-1 text-sm font-medium text-blue-600 hover:text-blue-700 bg-blue-50 px-3 py-1.5 rounded-md w-fit transition-colors">
                     <Users size={16} /><span>Manage Team</span>
                   </button>
@@ -958,7 +969,7 @@
                             {fb.authorPhoto ? <img src={fb.authorPhoto} alt="" className="w-5 h-5 rounded-full" /> : <UserCircle size={20} />}
                             <span>{fb.authorName}</span>
                           </div>
-                          {user.uid === fb.authorId && <button onClick={() => deleteItem('feedbacks', fb.id)} className="absolute top-3 right-3 text-stone-300 hover:text-red-500 opacity-0 group-hover:opacity-100"><Trash2 size={16} /></button>}
+                          {(user.uid === fb.authorId || isAdmin) && <button onClick={() => deleteItem('feedbacks', fb.id)} className="absolute top-3 right-3 text-stone-300 hover:text-red-500 opacity-0 group-hover:opacity-100"><Trash2 size={16} /></button>}
                         </div>
                       ))}
                     </div>
@@ -984,7 +995,7 @@
                             {fb.authorPhoto ? <img src={fb.authorPhoto} alt="" className="w-5 h-5 rounded-full" /> : <UserCircle size={20} />}
                             <span>{fb.authorName}</span>
                           </div>
-                          {user.uid === fb.authorId && <button onClick={() => deleteItem('feedbacks', fb.id)} className="absolute top-3 right-3 text-stone-300 hover:text-red-500 opacity-0 group-hover:opacity-100"><Trash2 size={16} /></button>}
+                          {(user.uid === fb.authorId || isAdmin) && <button onClick={() => deleteItem('feedbacks', fb.id)} className="absolute top-3 right-3 text-stone-300 hover:text-red-500 opacity-0 group-hover:opacity-100"><Trash2 size={16} /></button>}
                         </div>
                       ))}
                     </div>
@@ -1025,7 +1036,7 @@
                           </div>
                           {k.text && <p className="text-stone-600 text-sm mt-2 italic whitespace-pre-wrap">"{k.text}"</p>}
                           <div className="mt-3 text-xs text-stone-400 flex items-center space-x-1 border-t border-stone-100 pt-2"><span>From: {k.fromUserName}</span></div>
-                          {user.uid === k.fromUserId && <button onClick={() => deleteItem('kudos', k.id)} className="absolute top-3 right-3 text-stone-300 hover:text-red-500 opacity-0 group-hover:opacity-100"><Trash2 size={16} /></button>}
+                          {(user.uid === k.fromUserId || isAdmin) && <button onClick={() => deleteItem('kudos', k.id)} className="absolute top-3 right-3 text-stone-300 hover:text-red-500 opacity-0 group-hover:opacity-100"><Trash2 size={16} /></button>}
                         </div>
                       ))}
                     </div>
