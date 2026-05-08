@@ -90,6 +90,19 @@
       animation: fly-right linear infinite;
     }
     
+    /* IDLE ANIMATIONS */
+    @keyframes idle-breathe {
+      0%, 100% { transform: scaleY(1); }
+      50% { transform: scaleY(1.03) translateY(-1px); }
+    }
+    @keyframes idle-head {
+      0%, 100% { transform: rotate(0deg) translate(0, 0); }
+      33% { transform: rotate(-3deg) translate(-1px, 1px); }
+      66% { transform: rotate(3deg) translate(1px, 1px); }
+    }
+    .anim-idle-breathe { animation: idle-breathe 3s ease-in-out infinite; transform-origin: bottom; }
+    .anim-idle-head { animation: idle-head 6s ease-in-out infinite; transform-origin: bottom; }
+    
     /* ANIME MEADOW STYLES */
     .meadow-bg {
       background: linear-gradient(to bottom, #87CEEB, #B0E0E6);
@@ -346,7 +359,7 @@
       );
     };
 
-    const GardenerAvatar = ({ user, stars, totalGardeners, index }) => {
+    const GardenerAvatar = ({ user, stars, totalGardeners, index, forceScale }) => {
       // Expanded Drastic Upgrade System based on stars
       const hasCap = stars >= 2;
       const hasGlovesAndRake = stars >= 4;
@@ -354,44 +367,49 @@
       const hasWateringCan = stars >= 12;
       const isMaster = stars >= 20;
 
+      // Handle spotlight/highlight scaling completely independently
+      const isSpotlight = !!forceScale;
+
       // Compactness and overlap calculation based on crowd size
       let scale = 1;
       let overlapMargin = 12; // Standard margin gap
       
-      if (totalGardeners >= 15) {
-        scale = 0.65;
-        overlapMargin = -8; // Overlap for large teams
-      } else if (totalGardeners >= 10) {
-        scale = 0.8;
-        overlapMargin = -2; 
-      } else if (totalGardeners >= 6) {
-        scale = 0.9;
-        overlapMargin = 6;
+      if (!isSpotlight) {
+        if (totalGardeners >= 15) {
+          scale = 0.65;
+          overlapMargin = -8; // Overlap for large teams
+        } else if (totalGardeners >= 10) {
+          scale = 0.8;
+          overlapMargin = -2; 
+        } else if (totalGardeners >= 6) {
+          scale = 0.9;
+          overlapMargin = 6;
+        }
       }
 
-      const zIndex = 100 - (index || 0);
+      const zIndex = isSpotlight ? 50 : 100 - (index || 0);
 
       return (
         <div 
-          className="relative flex flex-col items-center justify-end group cursor-pointer origin-bottom transition-all duration-700 hover:!z-[999]"
-          style={{ transform: `scale(${scale})`, margin: `0 ${overlapMargin}px`, zIndex, height: '160px' }}
+          className={`relative flex flex-col items-center justify-end origin-bottom transition-all duration-700 ${!isSpotlight ? 'group cursor-pointer hover:!z-[999]' : ''}`}
+          style={{ transform: isSpotlight ? 'none' : `scale(${scale})`, margin: isSpotlight ? '0' : `0 ${overlapMargin}px`, zIndex, height: '160px' }}
         >
           {/* Master Aura */}
           {isMaster && <div className="absolute inset-0 top-10 bg-yellow-300 blur-xl opacity-60 rounded-full animate-pulse z-0 pointer-events-none"></div>}
 
-          {/* Avatar Container (Moves up on hover) */}
-          <div className="relative flex flex-col items-center transition-all duration-500 ease-out transform group-hover:-translate-y-3 z-20 origin-bottom">
+          {/* Avatar Container (Moves up on hover if not spotlighted) */}
+          <div className={`relative flex flex-col items-center transition-all duration-500 ease-out transform z-20 origin-bottom ${!isSpotlight ? 'group-hover:-translate-y-3' : ''}`}>
             
             {/* Master Crown */}
             {isMaster && (
-              <div className="absolute -top-8 z-40 transition-all duration-700 animate-bounce">
+              <div className="absolute -top-8 z-40 transition-all duration-700 animate-bounce anim-idle-head">
                 <Crown size={28} className="text-yellow-400 fill-yellow-400 drop-shadow-md" />
               </div>
             )}
 
             {/* Chibi Cap (Replaced by crown if Master) */}
             {hasCap && !isMaster && (
-              <div className="absolute -top-4 z-40 transition-all duration-700 origin-bottom drop-shadow-md">
+              <div className="absolute -top-4 z-40 transition-all duration-700 origin-bottom drop-shadow-md anim-idle-head">
                 <svg width="64" height="28" viewBox="0 0 100 50">
                   <path d="M 10 40 Q 50 -10 90 40 Z" fill="#fde047" />
                   <path d="M 0 40 Q 50 60 100 40 Q 50 25 0 40 Z" fill="#fef08a" stroke="#eab308" strokeWidth="2" />
@@ -401,7 +419,7 @@
             )}
 
             {/* Profile Head */}
-            <div className={`relative w-16 h-16 rounded-full flex items-center justify-center bg-white z-30 border-[3px] shadow-sm ${isMaster ? 'border-yellow-400 ring-4 ring-yellow-200' : 'border-stone-200'}`}>
+            <div className={`relative w-16 h-16 rounded-full flex items-center justify-center bg-white z-30 border-[3px] shadow-sm anim-idle-head ${isMaster ? 'border-yellow-400 ring-4 ring-yellow-200' : 'border-stone-200'}`}>
               {user.photoURL ? (
                 <img src={user.photoURL} alt="" className="w-full h-full rounded-full object-cover" />
               ) : (
@@ -410,7 +428,7 @@
             </div>
 
             {/* Chibi Body */}
-            <div className="relative -mt-4 z-20 flex flex-col items-center pointer-events-none">
+            <div className="relative -mt-4 z-20 flex flex-col items-center pointer-events-none anim-idle-breathe">
               <svg width="70" height="50" viewBox="0 0 70 50" className="drop-shadow-md overflow-visible">
                 
                 {/* Legs */}
@@ -493,17 +511,19 @@
           </div>
           
           {/* True Anchor Shadow - Structurally forces the div to sit on the flex-end line */}
-          <div className="w-14 h-2 bg-emerald-900/30 rounded-full blur-[2px] z-10 transition-all duration-500 group-hover:w-10 group-hover:opacity-60 shrink-0"></div>
+          <div className={`w-14 h-2 bg-emerald-900/30 rounded-full blur-[2px] z-10 transition-all duration-500 shrink-0 ${!isSpotlight ? 'group-hover:w-10 group-hover:opacity-60' : ''}`}></div>
           
           {/* Labels underneath */}
-          <div className="absolute top-[100%] mt-1 flex flex-col items-center transition-all duration-500 opacity-80 group-hover:opacity-100 z-50 pointer-events-none">
-            <span className="text-[11px] font-bold text-stone-800 tracking-wide bg-white/95 px-2.5 py-0.5 rounded-full shadow-sm border border-stone-200 whitespace-nowrap">
-              {user.displayName?.split(' ')[0]}
-            </span>
-            <div className="flex items-center text-[10px] text-yellow-700 font-bold bg-yellow-100 px-2 py-0.5 rounded-full shadow-sm mt-0.5 border border-yellow-300">
-              <Star size={9} className="mr-1 fill-yellow-500 text-yellow-500"/> {stars}
+          {!isSpotlight && (
+            <div className="absolute top-[100%] mt-1 flex flex-col items-center transition-all duration-500 opacity-80 group-hover:opacity-100 z-50 pointer-events-none">
+              <span className="text-[11px] font-bold text-stone-800 tracking-wide bg-white/95 px-2.5 py-0.5 rounded-full shadow-sm border border-stone-200 whitespace-nowrap">
+                {user.displayName?.split(' ')[0]}
+              </span>
+              <div className="flex items-center text-[10px] text-yellow-700 font-bold bg-yellow-100 px-2 py-0.5 rounded-full shadow-sm mt-0.5 border border-yellow-300">
+                <Star size={9} className="mr-1 fill-yellow-500 text-yellow-500"/> {stars}
+              </div>
             </div>
-          </div>
+          )}
         </div>
       );
     };
@@ -546,6 +566,11 @@
           setSelectedSprintId(null);
         }
       }, [sprints, selectedSprintId]);
+
+      // Automatically pre-fill the Kudos Receiver when entering Highlight Mode
+      useEffect(() => {
+        if (filterAuthorId) setNewKudoReceiver(filterAuthorId);
+      }, [filterAuthorId]);
 
       useEffect(() => {
         const initAuth = async () => {
@@ -632,28 +657,56 @@
         return { ...u, stars: totalStars };
       });
 
-      // Compute Weather State Based on Net Score
+      // Highlight Mode Logic & Extraction
+      const isHighlightMode = !!filterAuthorId;
+      let spotlightUser = null;
+      let spotlightKudos = [];
+      let spotlightStars = 0;
+      let hlNetScore = 0;
+      let hlIsWindy = false;
+      let hlIsRainy = false;
+      let hlIsStormy = false;
+      let hlSkyGradient = "meadow-bg";
+      let hlSunClass = "";
+
+      if (isHighlightMode) {
+        spotlightUser = activeGardenersList.find(u => u.uid === filterAuthorId) || usersList.find(u => u.uid === filterAuthorId) || { displayName: 'Unknown' };
+        spotlightKudos = currentKudos.filter(k => k.toUserId === filterAuthorId);
+        spotlightStars = spotlightKudos.reduce((sum, k) => sum + k.stars, 0);
+
+        // Compute Highlight-specific Weather
+        hlNetScore = displayedGoodFeedbacks.length - displayedBadFeedbacks.length;
+        hlIsWindy = hlNetScore < 0;
+        hlIsRainy = hlNetScore <= -2;
+        hlIsStormy = hlNetScore <= -4;
+
+        if (hlIsStormy) hlSkyGradient = "from-slate-800 via-slate-700 to-slate-600 bg-gradient-to-b";
+        else if (hlIsRainy) hlSkyGradient = "from-slate-500 via-slate-400 to-slate-300 bg-gradient-to-b";
+        else if (hlIsWindy) hlSkyGradient = "from-slate-300 via-slate-200 to-emerald-50 bg-gradient-to-b";
+
+        hlSunClass = "bg-yellow-100 w-16 h-16 top-10 left-10 opacity-80 blur-xl scale-100";
+        if (hlNetScore <= -3) hlSunClass = "bg-orange-600 w-16 h-16 top-48 left-10 opacity-0 blur-2xl translate-y-10 scale-50"; 
+        else if (hlNetScore < 0) hlSunClass = "bg-orange-400 w-24 h-24 top-28 left-10 opacity-60 blur-2xl translate-y-5 scale-90"; 
+        else if (hlNetScore >= 20) hlSunClass = "bg-yellow-50 w-32 h-32 top-2 left-12 opacity-100 blur-[20px] scale-125"; 
+        else if (hlNetScore >= 10) hlSunClass = "bg-yellow-50 w-24 h-24 top-6 left-10 opacity-95 blur-xl scale-110"; 
+      }
+
+      // Compute Overall Weather State (For Standard Mode)
       const netScore = totalGoodFeedbacks.length - totalBadFeedbacks.length;
       const isWindy = netScore < 0;
       const isRainy = netScore <= -2;
       const isStormy = netScore <= -4;
 
-      let skyGradient = "meadow-bg"; // Default anime meadow
+      let skyGradient = "meadow-bg";
       if (isStormy) skyGradient = "from-slate-800 via-slate-700 to-slate-600 bg-gradient-to-b";
       else if (isRainy) skyGradient = "from-slate-500 via-slate-400 to-slate-300 bg-gradient-to-b";
       else if (isWindy) skyGradient = "from-slate-300 via-slate-200 to-emerald-50 bg-gradient-to-b";
 
-      // Dynamic Sun Logic based on Net Score
       let sunClass = "bg-yellow-100 w-16 h-16 top-10 left-10 opacity-80 blur-xl scale-100";
-      if (netScore <= -3) {
-        sunClass = "bg-orange-600 w-16 h-16 top-48 left-10 opacity-0 blur-2xl translate-y-10 scale-50"; // Stormy/Gone
-      } else if (netScore < 0) {
-        sunClass = "bg-orange-400 w-24 h-24 top-28 left-10 opacity-60 blur-2xl translate-y-5 scale-90"; // Setting
-      } else if (netScore >= 20) {
-        sunClass = "bg-yellow-50 w-32 h-32 top-2 left-12 opacity-100 blur-[20px] scale-125"; // Extremely bright
-      } else if (netScore >= 10) {
-        sunClass = "bg-yellow-50 w-24 h-24 top-6 left-10 opacity-95 blur-xl scale-110"; // Very bright
-      }
+      if (netScore <= -3) sunClass = "bg-orange-600 w-16 h-16 top-48 left-10 opacity-0 blur-2xl translate-y-10 scale-50"; 
+      else if (netScore < 0) sunClass = "bg-orange-400 w-24 h-24 top-28 left-10 opacity-60 blur-2xl translate-y-5 scale-90"; 
+      else if (netScore >= 20) sunClass = "bg-yellow-50 w-32 h-32 top-2 left-12 opacity-100 blur-[20px] scale-125"; 
+      else if (netScore >= 10) sunClass = "bg-yellow-50 w-24 h-24 top-6 left-10 opacity-95 blur-xl scale-110"; 
 
       const handleGoogleLogin = async () => {
         setAuthError('');
@@ -661,9 +714,8 @@
           const result = await signInWithPopup(auth, new GoogleAuthProvider()); 
           const email = result.user?.email || '';
           
-          // Validate domain
           if (!(email.endsWith('@inventi.ph') || email.endsWith('@inventi.asia'))) {
-            await signOut(auth); // Immediately sign them out
+            await signOut(auth); 
             setAuthError("Access denied. Only @inventi.ph or @inventi.asia email addresses are allowed.");
             return;
           }
@@ -688,7 +740,6 @@
         if (!newSprintName.trim() || !user) return;
         try {
           const sprintsRef = collection(db, 'artifacts', appId, 'public', 'data', 'sprints');
-          // Add the creator as the default first participant
           const docRef = await addDoc(sprintsRef, { name: newSprintName, createdAt: Date.now(), createdBy: user.uid, participants: [user.uid] });
           setNewSprintName(''); setIsCreatingSprint(false); setSelectedSprintId(docRef.id);
         } catch (err) { console.error(err); }
@@ -698,7 +749,6 @@
         if (!selectedSprintId || !activeSprint) return;
         try {
           const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'sprints', selectedSprintId);
-          // Ensure creator is always a participant
           const finalParticipants = [...new Set([...tempParticipants, activeSprint.createdBy])];
           await updateDoc(docRef, { participants: finalParticipants });
           setIsManagingParticipants(false);
@@ -729,7 +779,7 @@
             sprintId: selectedSprintId, fromUserId: user.uid, fromUserName: user.displayName || user.email?.split('@')[0] || 'User', fromUserPhoto: user.photoURL || '',
             toUserId: receiver.uid, toUserName: receiver.displayName, toUserPhoto: receiver.photoURL || '', stars: newKudoStars, text: newKudoText, createdAt: Date.now()
           });
-          setNewKudoReceiver(''); setNewKudoText(''); setNewKudoStars(5);
+          setNewKudoText(''); setNewKudoStars(5);
         } catch (err) { console.error(err); }
       };
 
@@ -864,11 +914,11 @@
                     <div className="flex items-center space-x-2">
                       <span className="text-stone-500 font-medium text-sm hidden sm:inline">Filter:</span>
                       <div className="relative group">
-                        <select value={filterAuthorId} onChange={(e) => setFilterAuthorId(e.target.value)} className="appearance-none bg-white border border-stone-200 text-stone-600 text-sm py-1.5 pl-3 pr-8 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer w-[130px] sm:w-auto">
-                          <option value="">All Authors</option>
+                        <select value={filterAuthorId} onChange={(e) => setFilterAuthorId(e.target.value)} className="appearance-none bg-emerald-50 border border-emerald-200 text-emerald-800 font-bold text-sm py-1.5 pl-3 pr-8 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer w-[130px] sm:w-auto shadow-sm">
+                          <option value="">All Team</option>
                           {activeGardenersList.map(u => <option key={u.uid} value={u.uid}>{u.displayName?.split(' ')[0]}</option>)}
                         </select>
-                        <ChevronDown size={14} className="absolute right-2 top-1/2 -translate-y-1/2 text-stone-400 pointer-events-none" />
+                        <ChevronDown size={14} className="absolute right-2 top-1/2 -translate-y-1/2 text-emerald-600 pointer-events-none" />
                       </div>
                     </div>
                   </>
@@ -900,7 +950,116 @@
                   <Plus size={18} /><span>Create New Sprint</span>
                 </button>
               </div>
+            ) : isHighlightMode ? (
+              
+              /* ================== HIGHLIGHT MODE ================== */
+              <div className="relative w-full h-[calc(100vh-140px)] rounded-3xl overflow-hidden shadow-2xl border border-stone-200 bg-stone-100">
+                
+                {/* Fixed Parallax Background */}
+                <div className="absolute inset-0 z-0">
+                  <div className={`absolute inset-0 transition-colors duration-1000 ${hlSkyGradient}`}>
+                    <WeatherOverlay isWindy={hlIsWindy} isRainy={hlIsRainy} isStormy={hlIsStormy} />
+                    <BirdFlock netScore={hlNetScore} />
+                    <div className={`absolute rounded-full pointer-events-none transition-all duration-1000 ease-in-out ${hlSunClass}`}></div>
+                    
+                    <div className="absolute bottom-0 left-0 w-full h-[85%] pointer-events-none flex items-end justify-center">
+                      <TreeOfProgress goodCount={displayedGoodFeedbacks.length} badCount={displayedBadFeedbacks.length} />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Foreground Scrollable Overlays */}
+                <div className="absolute inset-0 z-10 overflow-y-auto overflow-x-hidden [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+                  <div className="min-h-full flex flex-col lg:flex-row">
+                    
+                    {/* Left: Sticky Hero Section (Huge Avatar) */}
+                    <div className="lg:sticky top-0 h-[45vh] lg:h-[calc(100vh-140px)] w-full lg:w-5/12 flex items-end justify-center pb-8 lg:pb-16 z-20 pointer-events-none self-start">
+                      <div className="origin-bottom transform scale-[1.8] md:scale-[2.2] lg:scale-[2.8] pointer-events-auto">
+                        <GardenerAvatar user={spotlightUser} stars={spotlightStars} forceScale={true} />
+                      </div>
+                    </div>
+
+                    {/* Right: Content Section (Glassmorphism Cards) */}
+                    <div className="flex-1 w-full lg:w-7/12 bg-white/40 backdrop-blur-xl border-t lg:border-t-0 lg:border-l border-white/60 shadow-[0_-10px_40px_rgba(0,0,0,0.1)] lg:shadow-[-10px_0_40px_rgba(0,0,0,0.1)] rounded-t-[3rem] lg:rounded-t-none lg:rounded-tl-[3rem] p-6 md:p-12 pb-24 min-h-[calc(100vh-140px)]">
+                      
+                      <div className="text-center mb-10">
+                        <h2 className="text-4xl md:text-5xl font-black text-emerald-950 drop-shadow-sm">{spotlightUser?.displayName}'s Highlight</h2>
+                        <p className="text-emerald-800 font-bold mt-3 text-lg drop-shadow-sm">A personalized view of their sprint contributions.</p>
+                      </div>
+
+                      <div className="max-w-4xl mx-auto space-y-10">
+                        
+                        {/* Went Well Spotlight */}
+                        <div className="bg-emerald-50/80 backdrop-blur-md rounded-3xl p-6 md:p-8 shadow-md border border-emerald-200">
+                          <h3 className="text-2xl font-bold text-emerald-900 mb-6 flex items-center gap-3"><Leaf size={28} className="text-emerald-600"/> Went Well</h3>
+                          <div className="space-y-4">
+                            {displayedGoodFeedbacks.length === 0 && <p className="text-emerald-700/60 italic font-medium">No positive feedback logged yet.</p>}
+                            {displayedGoodFeedbacks.map(fb => (
+                              <div key={fb.id} className="bg-white/80 p-5 rounded-2xl shadow-sm border border-emerald-100 hover:bg-white transition-colors group relative">
+                                <p className="text-stone-800 whitespace-pre-wrap font-medium">{fb.text}</p>
+                                {(user.uid === fb.authorId || isAdmin) && <button onClick={() => deleteItem('feedbacks', fb.id)} className="absolute top-3 right-3 text-stone-300 hover:text-red-500 opacity-0 group-hover:opacity-100"><Trash2 size={16} /></button>}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* To Improve Spotlight */}
+                        <div className="bg-amber-50/80 backdrop-blur-md rounded-3xl p-6 md:p-8 shadow-md border border-amber-200">
+                          <h3 className="text-2xl font-bold text-amber-900 mb-6 flex items-center gap-3"><Wind size={28} className="text-amber-600"/> To Improve</h3>
+                          <div className="space-y-4">
+                            {displayedBadFeedbacks.length === 0 && <p className="text-amber-700/60 italic font-medium">No areas to improve logged yet.</p>}
+                            {displayedBadFeedbacks.map(fb => (
+                              <div key={fb.id} className="bg-white/80 p-5 rounded-2xl shadow-sm border border-amber-100 hover:bg-white transition-colors group relative">
+                                <p className="text-stone-800 whitespace-pre-wrap font-medium">{fb.text}</p>
+                                {(user.uid === fb.authorId || isAdmin) && <button onClick={() => deleteItem('feedbacks', fb.id)} className="absolute top-3 right-3 text-stone-300 hover:text-red-500 opacity-0 group-hover:opacity-100"><Trash2 size={16} /></button>}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Kudos Spotlight */}
+                        <div className="bg-blue-50/80 backdrop-blur-md rounded-3xl p-6 md:p-8 shadow-md border border-blue-200">
+                          <h3 className="text-2xl font-bold text-blue-900 mb-6 flex items-center gap-3"><Star size={28} className="text-blue-600 fill-blue-600"/> Kudos Received</h3>
+                          
+                          {/* Send a direct Kudo form inside the highlight view */}
+                          <div className="mb-6 bg-white/60 p-4 rounded-2xl border border-blue-100 shadow-inner">
+                            <h4 className="font-bold text-blue-900 text-sm mb-3">Send a Kudo to {spotlightUser?.displayName?.split(' ')[0]}</h4>
+                            <form onSubmit={addKudo} className="flex flex-col sm:flex-row gap-2">
+                              <select value={newKudoStars} onChange={(e) => setNewKudoStars(Number(e.target.value))} className="w-full sm:w-20 bg-white border border-blue-200 rounded-xl px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400">
+                                {[5,4,3,2,1].map(n => <option key={n} value={n}>{n} ★</option>)}
+                              </select>
+                              <input type="text" value={newKudoText} onChange={(e) => setNewKudoText(e.target.value)} placeholder="Say something nice..." className="flex-1 bg-white border border-blue-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400" />
+                              <button type="submit" disabled={!newKudoText.trim()} className="bg-blue-600 text-white px-6 py-2 rounded-xl disabled:opacity-50 hover:bg-blue-700 transition-colors shadow-sm flex items-center justify-center gap-1 font-bold shrink-0">
+                                <Plus size={18} /> Send
+                              </button>
+                            </form>
+                          </div>
+
+                          <div className="space-y-4">
+                            {spotlightKudos.length === 0 && <p className="text-blue-700/60 italic font-medium">No kudos received yet.</p>}
+                            {spotlightKudos.map(k => (
+                              <div key={k.id} className="bg-white/80 p-5 rounded-2xl shadow-sm border border-blue-100 flex flex-col sm:flex-row justify-between items-start gap-4 hover:bg-white transition-colors group relative">
+                                <div>
+                                  <p className="text-stone-800 whitespace-pre-wrap font-medium italic">"{k.text}"</p>
+                                  <p className="text-xs text-stone-400 mt-3 font-semibold uppercase tracking-wide">From: {k.fromUserName}</p>
+                                </div>
+                                <div className="flex text-yellow-400 shrink-0 mt-2 sm:mt-0">
+                                  {[...Array(5)].map((_, i) => <Star key={i} size={16} className={i < k.stars ? "fill-current drop-shadow-sm" : "text-stone-200"} />)}
+                                </div>
+                                {(user.uid === k.fromUserId || isAdmin) && <button onClick={() => deleteItem('kudos', k.id)} className="absolute top-3 right-3 text-stone-300 hover:text-red-500 opacity-0 group-hover:opacity-100"><Trash2 size={16} /></button>}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
             ) : (
+              /* ================== STANDARD MODE ================== */
               <div className="flex flex-col gap-6 lg:gap-8 items-start w-full">
                 
                 {/* Visual Scene */}
@@ -924,7 +1083,7 @@
                       {/* The Dynamic Sun */}
                       <div className={`absolute rounded-full pointer-events-none transition-all duration-1000 ease-in-out ${sunClass}`}></div>
                       
-                      <div className="absolute bottom-0 left-0 w-full h-[75%] z-10 pointer-events-none flex items-end justify-center">
+                      <div className="absolute bottom-0 left-0 w-full h-[85%] pointer-events-none flex items-end justify-center">
                         <TreeOfProgress goodCount={totalGoodFeedbacks.length} badCount={totalBadFeedbacks.length} />
                       </div>
                       
@@ -953,7 +1112,7 @@
                   <div className="bg-emerald-50/50 rounded-2xl border border-emerald-100 flex flex-col h-[500px] lg:h-[600px] shadow-sm">
                     <div className="p-4 border-b border-emerald-100 bg-emerald-100/50 rounded-t-2xl flex items-center space-x-2 shrink-0">
                       <Leaf size={20} className="text-emerald-600" /><h2 className="font-bold text-emerald-900 text-lg">Went Well</h2>
-                      <span className="ml-auto bg-emerald-200 text-emerald-800 text-xs font-bold px-2 py-1 rounded-full">{displayedGoodFeedbacks.length}</span>
+                      <span className="ml-auto bg-emerald-200 text-emerald-800 text-xs font-bold px-2 py-1 rounded-full">{totalGoodFeedbacks.length}</span>
                     </div>
                     <div className="p-3 bg-white/60 border-b border-emerald-100 shrink-0">
                       <form onSubmit={(e) => { setNewFeedbackType('good'); addFeedback(e); }} className="flex gap-2">
@@ -962,7 +1121,7 @@
                       </form>
                     </div>
                     <div className="p-4 overflow-y-auto flex-1 space-y-3">
-                      {displayedGoodFeedbacks.map(fb => (
+                      {totalGoodFeedbacks.map(fb => (
                         <div key={fb.id} className="bg-white p-4 rounded-xl shadow-sm border border-emerald-100 relative group">
                           <p className="text-stone-800 text-sm whitespace-pre-wrap">{fb.text}</p>
                           <div className="mt-3 flex items-center space-x-2 text-xs text-stone-500">
@@ -979,7 +1138,7 @@
                   <div className="bg-amber-50/50 rounded-2xl border border-amber-100 flex flex-col h-[500px] lg:h-[600px] shadow-sm">
                     <div className="p-4 border-b border-amber-100 bg-amber-100/50 rounded-t-2xl flex items-center space-x-2 shrink-0">
                       <Wind size={20} className="text-amber-600" /><h2 className="font-bold text-amber-900 text-lg">To Improve</h2>
-                      <span className="ml-auto bg-amber-200 text-amber-800 text-xs font-bold px-2 py-1 rounded-full">{displayedBadFeedbacks.length}</span>
+                      <span className="ml-auto bg-amber-200 text-amber-800 text-xs font-bold px-2 py-1 rounded-full">{totalBadFeedbacks.length}</span>
                     </div>
                     <div className="p-3 bg-white/60 border-b border-amber-100 shrink-0">
                       <form onSubmit={(e) => { setNewFeedbackType('bad'); addFeedback(e); }} className="flex gap-2">
@@ -988,7 +1147,7 @@
                       </form>
                     </div>
                     <div className="p-4 overflow-y-auto flex-1 space-y-3">
-                      {displayedBadFeedbacks.map(fb => (
+                      {totalBadFeedbacks.map(fb => (
                         <div key={fb.id} className="bg-white p-4 rounded-xl shadow-sm border border-amber-100 relative group">
                           <p className="text-stone-800 text-sm whitespace-pre-wrap">{fb.text}</p>
                           <div className="mt-3 flex items-center space-x-2 text-xs text-stone-500">
