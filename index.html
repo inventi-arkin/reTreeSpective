@@ -89,6 +89,37 @@
       position: absolute;
       animation: fly-right linear infinite;
     }
+    
+    /* ANIME MEADOW STYLES */
+    .meadow-bg {
+      background: linear-gradient(to bottom, #87CEEB, #B0E0E6);
+    }
+    .anime-cloud {
+      fill: #FFFFFF;
+      filter: drop-shadow(2px 4px 6px rgba(0,0,0,0.1));
+    }
+    .distant-mountain {
+      fill: #A9C3D4;
+    }
+    .forest-line {
+      fill: #4A7C59;
+    }
+    .meadow-grass {
+      fill: url(#meadowGradient);
+    }
+    .meadow-flowers {
+      fill: #FFFFFF;
+      opacity: 0.7;
+    }
+    .tree-trunk {
+      fill: #5D4037;
+    }
+    .tree-leaves {
+      fill: #7CB342;
+    }
+    .tree-leaves-highlight {
+      fill: #AED581;
+    }
   </style>
 </head>
 <body class="bg-stone-50">
@@ -206,8 +237,7 @@
       const isStormy = netScore <= -4;
 
       // Darken ground visually during storms
-      const grassFill = isStormy ? "#064e3b" : (isRainy ? "#14532d" : "#22c55e");
-      const dirtFill = isStormy ? "#451a03" : (isRainy ? "#78350f" : "#8B4513");
+      const grassFill = isStormy ? "#064e3b" : (isRainy ? "#14532d" : "url(#meadowGradient)");
       const seedFill = isStormy ? "#78350f" : "#d97706";
 
       // Forest thresholds: Spawn new trees as score gets higher
@@ -224,8 +254,25 @@
       return (
         <div className="relative w-full h-full flex items-end justify-center drop-shadow-2xl">
           <svg viewBox="0 0 100 100" className="w-full h-full overflow-visible" preserveAspectRatio="xMidYMax meet">
-            <path d="M -300 85 Q 50 65 400 85 L 400 120 L -300 120 Z" fill={dirtFill} opacity="0.6" className="transition-colors duration-1000" />
-            <path d="M -300 88 Q 50 75 400 88 L 400 120 L -300 120 Z" fill={grassFill} opacity="0.9" className="transition-colors duration-1000" />
+            <defs>
+              <linearGradient id="meadowGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%" stopColor="#AEEA00" />
+                <stop offset="100%" stopColor="#7CB342" />
+              </linearGradient>
+            </defs>
+            
+            {/* Anime Meadow Background */}
+            <path d="M -300 85 Q 50 65 400 85 L 400 120 L -300 120 Z" fill={grassFill} opacity="0.9" className="transition-colors duration-1000" />
+            
+            {/* Meadow Flowers (Subtle) */}
+            {!isRainy && !isStormy && (
+              <g className="meadow-flowers">
+                <circle cx="10" cy="90" r="1" /> <circle cx="25" cy="88" r="0.8" /> <circle cx="40" cy="92" r="1.2" />
+                <circle cx="60" cy="89" r="0.9" /> <circle cx="75" cy="91" r="1.1" /> <circle cx="90" cy="87" r="0.8" />
+                <circle cx="-10" cy="90" r="1" /> <circle cx="-25" cy="88" r="0.8" /> <circle cx="-40" cy="92" r="1.2" />
+                <circle cx="110" cy="89" r="0.9" /> <circle cx="125" cy="91" r="1.1" /> <circle cx="140" cy="87" r="0.8" />
+              </g>
+            )}
 
             {treesConfig.map((config, index) => {
               const localScore = netScore - config.threshold;
@@ -263,14 +310,21 @@
 
                   <rect
                     x={cx - trunkWidth / 2} y={85 - trunkHeight} width={trunkWidth} height={trunkHeight}
-                    fill="#78350f" rx={2 * config.scale} className="transition-all duration-1000 ease-out" style={{ transformOrigin: `${cx}px 85px` }}
+                    fill="#5D4037" rx={2 * config.scale} className="tree-trunk transition-all duration-1000 ease-out" style={{ transformOrigin: `${cx}px 85px` }}
                   />
 
                   {hasLeaves && (
                     <g className="transition-all duration-1000 ease-out" style={{ transformOrigin: `${cx}px ${85 - trunkHeight}px` }}>
-                      <circle cx={cx} cy={85 - trunkHeight - canopySize * 0.3} r={canopySize} fill="#16a34a" className="transition-all duration-1000 ease-out" />
-                      <circle cx={cx - canopySize * 0.6} cy={85 - trunkHeight} r={canopySize * 0.7} fill="#15803d" className="transition-all duration-1000 ease-out" style={{ opacity: effScore >= 3 ? 1 : 0 }} />
-                      <circle cx={cx + canopySize * 0.6} cy={85 - trunkHeight} r={canopySize * 0.7} fill="#15803d" className="transition-all duration-1000 ease-out" style={{ opacity: effScore >= 3 ? 1 : 0 }} />
+                      <circle cx={cx} cy={85 - trunkHeight - canopySize * 0.3} r={canopySize} fill="#7CB342" className="tree-leaves transition-all duration-1000 ease-out" />
+                      <circle cx={cx - canopySize * 0.6} cy={85 - trunkHeight} r={canopySize * 0.7} fill="#7CB342" className="tree-leaves transition-all duration-1000 ease-out" style={{ opacity: effScore >= 3 ? 1 : 0 }} />
+                      <circle cx={cx + canopySize * 0.6} cy={85 - trunkHeight} r={canopySize * 0.7} fill="#7CB342" className="tree-leaves transition-all duration-1000 ease-out" style={{ opacity: effScore >= 3 ? 1 : 0 }} />
+                      {/* Highlights on leaves for anime style */}
+                      {!isRainy && !isStormy && (
+                        <g className="tree-leaves-highlight">
+                          <circle cx={cx - canopySize * 0.2} cy={85 - trunkHeight - canopySize * 0.5} r={canopySize * 0.4} />
+                          <circle cx={cx - canopySize * 0.7} cy={85 - trunkHeight - canopySize * 0.2} r={canopySize * 0.3} />
+                        </g>
+                      )}
                     </g>
                   )}
 
@@ -576,10 +630,10 @@
       const isRainy = netScore <= -2;
       const isStormy = netScore <= -4;
 
-      let skyGradient = "from-sky-200 via-sky-100 to-emerald-50";
-      if (isStormy) skyGradient = "from-slate-800 via-slate-700 to-slate-600";
-      else if (isRainy) skyGradient = "from-slate-500 via-slate-400 to-slate-300";
-      else if (isWindy) skyGradient = "from-slate-300 via-slate-200 to-emerald-50";
+      let skyGradient = "meadow-bg"; // Default anime meadow
+      if (isStormy) skyGradient = "from-slate-800 via-slate-700 to-slate-600 bg-gradient-to-b";
+      else if (isRainy) skyGradient = "from-slate-500 via-slate-400 to-slate-300 bg-gradient-to-b";
+      else if (isWindy) skyGradient = "from-slate-300 via-slate-200 to-emerald-50 bg-gradient-to-b";
 
       // Dynamic Sun Logic based on Net Score
       let sunClass = "bg-yellow-100 w-16 h-16 top-10 left-10 opacity-80 blur-xl scale-100";
@@ -851,7 +905,7 @@
                     </div>
                     
                     {/* The Integrated 3D-like Scene With Dynamic Weather & Sun */}
-                    <div className={`relative flex-1 w-full bg-gradient-to-b ${skyGradient} rounded-xl overflow-hidden shadow-inner border border-stone-200 transition-colors duration-1000`}>
+                    <div className={`relative flex-1 w-full rounded-xl overflow-hidden shadow-inner border border-stone-200 transition-colors duration-1000 ${skyGradient}`}>
                       
                       <WeatherOverlay isWindy={isWindy} isRainy={isRainy} isStormy={isStormy} />
                       <BirdFlock netScore={netScore} />
