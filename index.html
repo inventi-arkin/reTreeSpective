@@ -27,7 +27,7 @@
 
   <style>
     /* Global Styles */
-    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background-color: #fafaf9; }
     ::-webkit-scrollbar { display: none; }
     * { -ms-overflow-style: none; scrollbar-width: none; }
     
@@ -107,17 +107,16 @@
     .tree-leaves-highlight { fill: #AED581; }
   </style>
 </head>
-<body class="bg-stone-50">
+<body>
   <div id="root"></div>
 
-  <!-- Main Application Logic -->
   <script type="text/babel" data-type="module">
     import React, { useState, useEffect, useMemo, useRef } from 'react';
     import { createRoot } from 'react-dom/client';
     import { 
       TreePine, UserCircle, Plus,
       Leaf, LogOut, Loader2, ChevronDown, Trash2,
-      Star, Sprout, Wind, Crown, Users
+      Star, Sprout, Wind, Crown, Users, Download
     } from 'lucide-react';
     import { initializeApp } from 'firebase/app';
     import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut, signInWithCustomToken } from 'firebase/auth';
@@ -125,21 +124,23 @@
       getFirestore, collection, onSnapshot, addDoc, setDoc, doc, deleteDoc, updateDoc 
     } from 'firebase/firestore';
 
-    // Sensitive keys are retrieved from the environment.
+    // IMPORTANT: Paste your Firebase configuration here
     const defaultFirebaseConfig = {
-      apiKey: "AIzaSyAENhzftyzp2Hq9dxWHkXyOAFpBtJ-bYcA",
-			authDomain: "retreespective.firebaseapp.com",
-			projectId: "retreespective",
-			storageBucket: "retreespective.firebasestorage.app",
-			messagingSenderId: "1015414818833",
-			appId: "1:1015414818833:web:d3e1e6630cc46d7d60c9b0",
-			measurementId: "G-WXE20EK4DF"
+      apiKey: "YOUR_API_KEY",
+      authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+      projectId: "YOUR_PROJECT_ID",
+      storageBucket: "YOUR_PROJECT_ID.appspot.com",
+      messagingSenderId: "YOUR_SENDER_ID",
+      appId: "YOUR_APP_ID",
+      measurementId: "YOUR_MEASUREMENT_ID"
     };
+
+    const ADMIN_EMAILS = ['admin@inventi.ph', 'arkin.paroan@inventi.ph'];
 
     let firebaseConfig = defaultFirebaseConfig;
     let appId = 'retreespective-app';
     
-    if (typeof __firebase_config !== 'undefined' && __firebase_config) {
+    if (typeof __firebase_config !== 'undefined' && __firebase_config && __firebase_config !== "{}") {
       try { firebaseConfig = JSON.parse(__firebase_config); } catch (e) {}
     }
     if (typeof __app_id !== 'undefined' && __app_id) { appId = __app_id; }
@@ -148,7 +149,7 @@
     const auth = getAuth(app);
     const db = getFirestore(app);
 
-    // --- COMPONENTS ---
+    // --- SUB-COMPONENTS ---
 
     const BirdFlock = ({ netScore }) => {
       if (netScore < 10) return null;
@@ -209,7 +210,6 @@
               const localScore = netScore - config.threshold;
               if (localScore < 0 && index !== 0) return null; 
               const effScore = Math.max(0, localScore), trunkHeight = effScore === 0 ? 0 : Math.min(50, 10 + effScore * 4) * config.scale, trunkWidth = effScore === 0 ? 0 : Math.min(16, 4 + effScore * 1.2) * config.scale, canopySize = effScore === 0 ? 0 : Math.min(42, 12 + effScore * 3.5) * config.scale, cx = config.cx;
-              const fruitPositions = [{ x: cx, y: 80 - trunkHeight - canopySize * 0.7 }, { x: cx - canopySize * 0.5, y: 80 - trunkHeight - canopySize * 0.2 }, { x: cx + canopySize * 0.5, y: 80 - trunkHeight - canopySize * 0.2 }, { x: cx - canopySize * 0.3, y: 80 - trunkHeight + canopySize * 0.3 }, { x: cx + canopySize * 0.3, y: 80 - trunkHeight + canopySize * 0.3 }, { x: cx - canopySize * 0.1, y: 80 - trunkHeight - canopySize * 0.5 }, { x: cx + canopySize * 0.15, y: 80 - trunkHeight - canopySize * 0.6 }];
               return (
                 <g key={`tree-${index}`}>
                   {index === 0 && effScore === 0 && <><ellipse cx={cx} cy="85" rx={5} ry={3} fill={seedFill} /><path d={`M ${cx} 85 Q ${cx+5} 80 ${cx+8} 75 Q ${cx+3} 78 ${cx} 85 Z`} fill="#16a34a" /></>}
@@ -269,21 +269,30 @@
       const [newFeedbackText, setNewFeedbackText] = useState(''), [newFeedbackType, setNewFeedbackType] = useState('good'), [newKudoStars, setNewKudoStars] = useState(5), [newKudoText, setNewKudoText] = useState('');
       const [filterAuthorId, setFilterAuthorId] = useState(''), [newKudoReceiver, setNewKudoReceiver] = useState(''), [isManagingParticipants, setIsManagingParticipants] = useState(false), [tempParticipants, setTempParticipants] = useState([]), [activeSection, setActiveSection] = useState('intro');
 
-      // Admin check logic is now dynamic based on Firestore configuration
-      const isAdmin = user?.email && (adminsList.includes(user.email));
+      const isAdmin = user?.email && (adminsList.includes(user.email) || ADMIN_EMAILS.includes(user.email));
       const highlightContainerRef = useRef(null);
 
       useEffect(() => {
-        const initAuth = async () => { if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) { try { await signInWithCustomToken(auth, __initial_auth_token); } catch(e){} }};
+        const initAuth = async () => { 
+          if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) { 
+            try { await signInWithCustomToken(auth, __initial_auth_token); } catch(e){} 
+          }
+        };
         initAuth();
-        const unsubscribe = onAuthStateChanged(auth, async (currentUser) => { setUser(currentUser); setLoading(false); if (currentUser) { const userRef = doc(db, 'artifacts', appId, 'public', 'data', 'users', currentUser.uid); await setDoc(userRef, { uid: currentUser.uid, displayName: currentUser.displayName || currentUser.email?.split('@')[0], photoURL: currentUser.photoURL || '' }, { merge: true }); }});
+        const unsubscribe = onAuthStateChanged(auth, async (currentUser) => { 
+          setUser(currentUser); 
+          setLoading(false); 
+          if (currentUser) { 
+            const userRef = doc(db, 'artifacts', appId, 'public', 'data', 'users', currentUser.uid); 
+            await setDoc(userRef, { uid: currentUser.uid, displayName: currentUser.displayName || currentUser.email?.split('@')[0], photoURL: currentUser.photoURL || '' }, { merge: true }); 
+          }
+        });
         return () => unsubscribe();
       }, []);
 
       useEffect(() => {
         if (!user) return;
         
-        // Listen to Admin List (Dynamic Config)
         const adminsRef = collection(db, 'artifacts', appId, 'public', 'data', 'admin_config');
         const unsubAdmins = onSnapshot(adminsRef, (snapshot) => {
           setAdminsList(snapshot.docs.map(doc => doc.data().email));
@@ -329,12 +338,7 @@
       const sunCls = isStormy ? "opacity-0" : isRainy ? "bg-orange-600 top-40 opacity-0" : isWindy ? "bg-orange-400 top-20 opacity-60 blur-2xl" : "bg-yellow-100 top-10 opacity-80 blur-xl";
 
       const handleGoogleLogin = async () => { 
-        try { 
-          await signInWithPopup(auth, new GoogleAuthProvider()); 
-          // Domain validation is handled via Firebase Console settings for complete privacy of code
-        } catch(e){ 
-          setAuthError(e.message); 
-        }
+        try { await signInWithPopup(auth, new GoogleAuthProvider()); } catch(e){ setAuthError(e.message); }
       };
       
       const addFeedback = async (e) => { e.preventDefault(); if (!newFeedbackText.trim()) return; await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'feedbacks'), { sprintId: selectedSprintId, type: newFeedbackType, text: newFeedbackText, authorId: user.uid, authorName: user.displayName || user.email?.split('@')[0], authorPhoto: user.photoURL || '', createdAt: Date.now() }); setNewFeedbackText(''); };
@@ -352,11 +356,45 @@
       const deleteItem = async (col, id) => { await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', col, id)); };
       const createSprint = async (e) => { e.preventDefault(); const dr = await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'sprints'), { name: newSprintName, createdAt: Date.now(), createdBy: user.uid, participants: [user.uid] }); setNewSprintName(''); setIsCreatingSprint(false); setSelectedSprintId(dr.id); };
       const saveParticipants = async () => { await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'sprints', selectedSprintId), { participants: [...new Set([...tempParticipants, activeSprint.createdBy])] }); setIsManagingParticipants(false); };
+      
+      const handleExportCSV = () => {
+        if (!selectedSprintId) return;
+        
+        // Prepare Headers
+        let csvContent = "Category,Type/Stars,Author/From,Recipient,Content,Date\n";
+        
+        // Add Feedbacks
+        sprintFeedbacks.forEach(fb => {
+          const type = fb.type === 'good' ? 'Went Well' : 'To Improve';
+          const content = fb.text.replace(/"/g, '""'); // Escape quotes
+          const date = new Date(fb.createdAt).toLocaleDateString();
+          csvContent += `Feedback,${type},"${fb.authorName}",,"${content}",${date}\n`;
+        });
+        
+        // Add Kudos
+        sprintKudos.forEach(k => {
+          const content = (k.text || "").replace(/"/g, '""');
+          const date = new Date(k.createdAt).toLocaleDateString();
+          csvContent += `Kudos,${k.stars} Stars,"${k.fromUserName}","${k.toUserName}","${content}",${date}\n`;
+        });
+        
+        // Download logic
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement("a");
+        const url = URL.createObjectURL(blob);
+        link.setAttribute("href", url);
+        link.setAttribute("download", `ReTreeSpective_${activeSprint.name}.csv`);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      };
+
       const scrollToSection = (i) => highlightContainerRef.current?.scrollTo({ top: highlightContainerRef.current.clientHeight * i, behavior: 'smooth' });
 
       if (loading) return <div className="min-h-screen bg-stone-50 flex items-center justify-center"><Loader2 className="animate-spin text-emerald-600" size={48} /></div>;
       if (!user) return (
-        <div className="min-h-screen bg-stone-50 flex items-center justify-center p-6"><div className="w-full max-w-md bg-white rounded-2xl shadow-sm border p-10 text-center"><div className="bg-emerald-50 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6"><TreePine size={40} className="text-emerald-600" /></div><h2 className="text-2xl font-bold mb-2">ReTreeSpective</h2><p className="text-stone-500 mb-6">Sign in with your company email.</p><button onClick={handleGoogleLogin} className="w-full bg-white border px-6 py-3 rounded-xl font-bold flex items-center justify-center gap-3 hover:bg-stone-50 shadow-sm transition-all">Sign in with Google</button>{authError && <p className="mt-4 text-red-500 text-sm">{authError}</p>}</div></div>
+        <div className="min-h-screen bg-stone-50 flex items-center justify-center p-6"><div className="w-full max-w-md bg-white rounded-2xl shadow-sm border p-10 text-center"><div className="bg-emerald-50 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6"><TreePine size={40} className="text-emerald-600" /></div><h2 className="text-2xl font-bold mb-2 text-stone-800">ReTreeSpective</h2><p className="text-stone-500 mb-6">Sign in to begin.</p><button onClick={handleGoogleLogin} className="w-full bg-white border px-6 py-3 rounded-xl font-bold flex items-center justify-center gap-3 hover:bg-stone-50 shadow-sm transition-all text-stone-700">Sign in with Google</button>{authError && <p className="mt-4 text-red-500 text-sm">{authError}</p>}</div></div>
       );
 
       const gardeners = activeGardenersList.map(u => ({ ...u, stars: sprintKudos.filter(k => k.toUserId === u.uid).reduce((sum, k) => sum + k.stars, 0) }));
@@ -370,7 +408,7 @@
                 {user.photoURL ? <img src={user.photoURL} className="w-8 h-8 rounded-full border border-emerald-600" /> : <UserCircle size={28} />}
                 <div className="flex flex-col"><span className="text-sm font-medium leading-tight">{user.displayName}</span>{isAdmin && <span className="text-[10px] text-yellow-300 font-bold uppercase">Admin</span>}</div>
               </div>
-              <button onClick={() => signOut(auth)}><LogOut size={20} /></button>
+              <button onClick={() => signOut(auth)} className="hover:text-emerald-200 transition-colors"><LogOut size={20} /></button>
             </div>
           </header>
 
@@ -403,6 +441,11 @@
               {selectedSprintId && <><div className="w-px h-6 bg-stone-200 mx-1"></div><select value={filterAuthorId} onChange={(e) => { setFilterAuthorId(e.target.value); setActiveSection('intro'); }} className="bg-emerald-50 border border-emerald-200 text-emerald-800 font-bold text-sm py-1.5 px-3 rounded-md outline-none"><option value="">All Team</option>{activeGardenersList.map(u => <option key={u.uid} value={u.uid}>{u.displayName}</option>)}</select></>}
             </div>
             <div className="flex space-x-2">
+              {selectedSprintId && (
+                <button onClick={handleExportCSV} className="flex items-center space-x-1 text-sm font-medium text-emerald-600 bg-stone-50 px-3 py-1.5 rounded-md hover:bg-stone-100" title="Export to CSV">
+                  <Download size={16} />
+                </button>
+              )}
               {selectedSprintId && (activeSprint?.createdBy === user?.uid || isAdmin) && <button onClick={() => { setTempParticipants(activeSprint?.participants || []); setIsManagingParticipants(true); }} className="flex items-center space-x-1 text-sm font-medium text-blue-600 bg-blue-50 px-3 py-1.5 rounded-md"><Users size={16} /><span>Team</span></button>}
               <button onClick={() => setIsCreatingSprint(true)} className="flex items-center space-x-1 text-sm font-medium text-emerald-600 bg-emerald-50 px-3 py-1.5 rounded-md"><Plus size={16} /><span>New</span></button>
             </div>
@@ -428,7 +471,7 @@
                 <div className="w-full flex flex-col z-10 h-[350px] md:h-[450px]"><div className="bg-white/95 rounded-3xl shadow-md border p-4 flex flex-col h-full overflow-hidden"><div className="flex items-center justify-between mb-4 z-30 px-4"><h3 className="text-xl font-extrabold text-emerald-900 flex items-center gap-2"><TreePine className="text-emerald-600" /> Sprint Garden</h3><div className="flex items-center space-x-3 text-sm font-bold bg-white px-4 py-1.5 rounded-full shadow-sm"><span className="text-emerald-600 flex items-center gap-1"><Leaf size={14}/> {displayedGood.length}</span><div className="w-px h-3 bg-stone-300"></div><span className="text-amber-600 flex items-center gap-1"><Wind size={14}/> {displayedBad.length}</span></div></div><div className={`relative flex-1 w-full rounded-2xl overflow-hidden shadow-inner border transition-colors duration-1000 ${skyGrad}`}><WeatherOverlay isWindy={isWindy} isRainy={isRainy} isStormy={isStormy} /><BirdFlock netScore={netScore} /><div className={`absolute w-32 h-32 rounded-full pointer-events-none transition-all duration-1000 ${sunCls}`}></div><div className="absolute bottom-0 left-0 w-full h-[75%] pointer-events-none flex items-end justify-center"><TreeOfProgress goodCount={displayedGood.length} badCount={displayedBad.length} /></div><div className="absolute inset-0 z-20 overflow-x-auto overflow-y-hidden flex items-end"><div className="flex flex-nowrap items-end px-12 pb-12 mx-auto min-w-max h-full pt-10">{gardeners.sort((a,b) => b.stars - a.stars).map((g, idx) => <div key={g.uid} onClick={() => setFilterAuthorId(g.uid)}><GardenerAvatar user={g} stars={g.stars} totalGardeners={gardeners.length} index={idx} /></div>)}</div></div></div></div></div>
                 <div className="w-full grid grid-cols-1 lg:grid-cols-3 gap-6">
                   <div className="bg-emerald-50/50 rounded-3xl border flex flex-col h-[500px] shadow-sm"><div className="p-4 border-b bg-emerald-100/50 flex items-center gap-2 rounded-t-3xl"><Leaf size={20} className="text-emerald-600" /><h2 className="font-bold">Went Well</h2></div><div className="p-3 bg-white/60 border-b"><form onSubmit={addFeedback} className="flex gap-2"><input type="text" value={newFeedbackType === 'good' ? newFeedbackText : ''} onChange={(e) => { setNewFeedbackType('good'); setNewFeedbackText(e.target.value); }} placeholder="Add a win..." className="flex-1 bg-white border border-stone-100 rounded-xl px-3 py-2 text-sm outline-none" /><button type="submit" className="bg-emerald-600 text-white p-2 rounded-xl" disabled={newFeedbackType!=='good' || !newFeedbackText.trim()}><Plus size={20} /></button></form></div><div className="p-4 overflow-y-auto flex-1 space-y-3">{displayedGood.map(fb => <div key={fb.id} className="bg-white p-4 rounded-2xl shadow-sm border border-emerald-100 relative group"><p className="text-stone-800 text-sm whitespace-pre-wrap">{fb.text}</p><div className="mt-3 flex items-center space-x-2 text-xs text-stone-500">{fb.authorPhoto ? <img src={fb.authorPhoto} className="w-5 h-5 rounded-full" /> : <UserCircle size={20} />}<span>{fb.authorName}</span></div>{(user.uid === fb.authorId || isAdmin) && <button onClick={() => deleteItem('feedbacks', fb.id)} className="absolute top-3 right-3 text-stone-300 opacity-0 group-hover:opacity-100 transition-opacity"><Trash2 size={16} /></button>}</div>)}</div></div>
-                  <div className="bg-amber-50/50 rounded-3xl border flex flex-col h-[500px] shadow-sm"><div className="p-4 border-b bg-amber-100/50 flex items-center gap-2 rounded-t-3xl"><Wind size={20} className="text-amber-600" /><h2 className="font-bold">To Improve</h2></div><div className="p-3 bg-white/60 border-b"><form onSubmit={addFeedback} className="flex gap-2"><input type="text" value={newFeedbackType === 'bad' ? newFeedbackText : ''} onChange={(e) => { setNewFeedbackType('bad'); setNewFeedbackText(e.target.value); }} placeholder="Add an obstacle..." className="flex-1 bg-white border rounded-lg px-3 py-2 text-sm outline-none" /><button type="submit" className="bg-amber-600 text-white p-2 rounded-lg disabled:opacity-50" disabled={newFeedbackType!=='bad' || !newFeedbackText.trim()}><Plus size={20} /></button></form></div><div className="p-4 overflow-y-auto flex-1 space-y-3">{displayedBad.map(fb => <div key={fb.id} className="bg-white p-4 rounded-2xl shadow-sm border border-amber-100 relative group"><p className="text-stone-800 text-sm whitespace-pre-wrap">{fb.text}</p><div className="mt-3 flex items-center space-x-2 text-xs text-stone-500">{fb.authorPhoto ? <img src={fb.authorPhoto} className="w-5 h-5 rounded-full" /> : <UserCircle size={20} />}<span>{fb.authorName}</span></div>{(user.uid === fb.authorId || isAdmin) && <button onClick={() => deleteItem('feedbacks', fb.id)} className="absolute top-3 right-3 text-stone-300 opacity-0 group-hover:opacity-100 transition-opacity"><Trash2 size={16} /></button>}</div>)}</div></div>
+                  <div className="bg-amber-50/50 rounded-3xl border flex flex-col h-[500px] shadow-sm"><div className="p-4 border-b bg-amber-100/50 flex items-center gap-2 rounded-t-3xl"><Wind size={20} className="text-amber-600" /><h2 className="font-bold">To Improve</h2></div><div className="p-3 bg-white/60 border-b"><form onSubmit={addFeedback} className="flex gap-2"><input type="text" value={newFeedbackType === 'bad' ? newFeedbackText : ''} onChange={(e) => { setNewFeedbackType('bad'); setNewFeedbackText(e.target.value); }} placeholder="Add an obstacle..." className="flex-1 bg-white border rounded-lg px-3 py-2 text-sm outline-none" /><button type="submit" className="bg-amber-600 text-white p-2 rounded-xl" disabled={newFeedbackType!=='bad' || !newFeedbackText.trim()}><Plus size={20} /></button></form></div><div className="p-4 overflow-y-auto flex-1 space-y-3">{displayedBad.map(fb => <div key={fb.id} className="bg-white p-4 rounded-2xl shadow-sm border border-amber-100 relative group"><p className="text-stone-800 text-sm whitespace-pre-wrap">{fb.text}</p><div className="mt-3 flex items-center space-x-2 text-xs text-stone-500">{fb.authorPhoto ? <img src={fb.authorPhoto} className="w-5 h-5 rounded-full" /> : <UserCircle size={20} />}<span>{fb.authorName}</span></div>{(user.uid === fb.authorId || isAdmin) && <button onClick={() => deleteItem('feedbacks', fb.id)} className="absolute top-3 right-3 text-stone-300 opacity-0 group-hover:opacity-100 transition-opacity"><Trash2 size={16} /></button>}</div>)}</div></div>
                   <div className="bg-blue-50/50 rounded-3xl border flex flex-col h-[500px] shadow-sm"><div className="p-4 border-b bg-blue-100/50 flex items-center gap-2 rounded-t-3xl"><Star size={20} className="text-blue-600 fill-blue-600" /><h2 className="font-bold">Team Kudos</h2></div><div className="p-3 bg-white/60 border-b"><form onSubmit={addKudo} className="space-y-2"><div className="flex gap-2"><select value={newKudoReceiver} onChange={(e) => setNewKudoReceiver(e.target.value)} className="flex-1 bg-white border border-stone-100 rounded-xl px-2 py-2 text-sm outline-none"><option value="">Select colleague...</option>{activeGardenersList.filter(u => u.uid !== user.uid).map(u => <option key={u.uid} value={u.uid}>{u.displayName}</option>)}</select><select value={newKudoStars} onChange={(e) => setNewKudoStars(Number(e.target.value))} className="w-16 bg-white border border-stone-100 rounded-xl px-2 py-2 text-sm outline-none">{[5,4,3,2,1].map(n => <option key={n} value={n}>{n} ★</option>)}</select></div><div className="flex gap-2"><input type="text" value={newKudoText} onChange={(e) => setNewKudoText(e.target.value)} placeholder="Say something nice..." className="flex-1 bg-white border border-stone-100 rounded-xl px-3 py-2 text-sm outline-none" /><button type="submit" disabled={!newKudoReceiver || !newKudoText.trim()} className="bg-blue-600 text-white p-2 rounded-xl"><Plus size={20} /></button></div></form></div><div className="p-4 overflow-y-auto flex-1 space-y-3">{sprintKudos.map(k => <div key={k.id} className="bg-white p-4 rounded-2xl shadow-sm border border-blue-100 relative group"><div className="flex justify-between items-center mb-2"><div className="flex items-center space-x-2">{k.toUserPhoto ? <img src={k.toUserPhoto} className="w-6 h-6 rounded-full" /> : <UserCircle size={24} />}<span className="font-bold text-sm">{k.toUserName}</span></div><div className="flex text-yellow-400">{[...Array(5)].map((_, i) => <Star key={i} size={14} className={i < k.stars ? "fill-current" : "text-stone-200"} />)}</div></div><p className="text-stone-600 text-sm italic">"{k.text}"</p><div className="mt-3 text-xs text-stone-400 pt-2 border-t">From: {k.fromUserName}</div>{(user.uid === k.fromUserId || isAdmin) && <button onClick={() => deleteItem('kudos', k.id)} className="absolute top-3 right-3 text-stone-300 opacity-0 group-hover:opacity-100 transition-opacity"><Trash2 size={16} /></button>}</div>)}</div></div>
                 </div>
               </div>
