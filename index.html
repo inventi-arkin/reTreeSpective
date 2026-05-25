@@ -125,16 +125,15 @@
       getFirestore, collection, onSnapshot, addDoc, setDoc, doc, deleteDoc, updateDoc 
     } from 'firebase/firestore';
 
-    // REPLACE THESE PLACEHOLDERS WITH YOUR ACTUAL KEYS FROM FIREBASE CONSOLE FOR PRODUCTION DEPLOYMENT
-    const defaultFirebaseConfig = {
-      apiKey: "YOUR_API_KEY",
-      authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-      projectId: "YOUR_PROJECT_ID",
-      storageBucket: "YOUR_PROJECT_ID.appspot.com",
-      messagingSenderId: "YOUR_SENDER_ID",
-      appId: "YOUR_APP_ID",
-      measurementId: "YOUR_MEASUREMENT_ID"
-    };
+    const firebaseConfig = {
+			apiKey: "AIzaSyAENhzftyzp2Hq9dxWHkXyOAFpBtJ-bYcA",
+			authDomain: "retreespective.firebaseapp.com",
+			projectId: "retreespective",
+			storageBucket: "retreespective.firebasestorage.app",
+			messagingSenderId: "1015414818833",
+			appId: "1:1015414818833:web:d3e1e6630cc46d7d60c9b0",
+			measurementId: "G-WXE20EK4DF"
+		};
 
     let firebaseConfig = defaultFirebaseConfig;
     let appId = 'retreespective-app';
