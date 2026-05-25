@@ -110,6 +110,7 @@
 <body>
   <div id="root"></div>
 
+  <!-- Main Application Logic -->
   <script type="text/babel" data-type="module">
     import React, { useState, useEffect, useMemo, useRef } from 'react';
     import { createRoot } from 'react-dom/client';
@@ -124,18 +125,16 @@
       getFirestore, collection, onSnapshot, addDoc, setDoc, doc, deleteDoc, updateDoc 
     } from 'firebase/firestore';
 
-    // IMPORTANT: Paste your Firebase configuration here
+    // REPLACE THESE PLACEHOLDERS WITH YOUR ACTUAL KEYS FROM FIREBASE CONSOLE FOR PRODUCTION DEPLOYMENT
     const defaultFirebaseConfig = {
-      apiKey: "AIzaSyAENhzftyzp2Hq9dxWHkXyOAFpBtJ-bYcA",
-	  authDomain: "retreespective.firebaseapp.com",
-	  projectId: "retreespective",
-	  storageBucket: "retreespective.firebasestorage.app",
-	  messagingSenderId: "1015414818833",
-	  appId: "1:1015414818833:web:d3e1e6630cc46d7d60c9b0",
-	  measurementId: "G-WXE20EK4DF"
+      apiKey: "YOUR_API_KEY",
+      authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+      projectId: "YOUR_PROJECT_ID",
+      storageBucket: "YOUR_PROJECT_ID.appspot.com",
+      messagingSenderId: "YOUR_SENDER_ID",
+      appId: "YOUR_APP_ID",
+      measurementId: "YOUR_MEASUREMENT_ID"
     };
-
-    const ADMIN_EMAILS = ['admin@inventi.ph', 'arkin.paroan@inventi.ph'];
 
     let firebaseConfig = defaultFirebaseConfig;
     let appId = 'retreespective-app';
@@ -149,7 +148,7 @@
     const auth = getAuth(app);
     const db = getFirestore(app);
 
-    // --- SUB-COMPONENTS ---
+    // --- COMPONENTS ---
 
     const BirdFlock = ({ netScore }) => {
       if (netScore < 10) return null;
@@ -210,6 +209,7 @@
               const localScore = netScore - config.threshold;
               if (localScore < 0 && index !== 0) return null; 
               const effScore = Math.max(0, localScore), trunkHeight = effScore === 0 ? 0 : Math.min(50, 10 + effScore * 4) * config.scale, trunkWidth = effScore === 0 ? 0 : Math.min(16, 4 + effScore * 1.2) * config.scale, canopySize = effScore === 0 ? 0 : Math.min(42, 12 + effScore * 3.5) * config.scale, cx = config.cx;
+              const fruitPositions = [{ x: cx, y: 80 - trunkHeight - canopySize * 0.7 }, { x: cx - canopySize * 0.5, y: 80 - trunkHeight - canopySize * 0.2 }, { x: cx + canopySize * 0.5, y: 80 - trunkHeight - canopySize * 0.2 }, { x: cx - canopySize * 0.3, y: 80 - trunkHeight + canopySize * 0.3 }, { x: cx + canopySize * 0.3, y: 80 - trunkHeight + canopySize * 0.3 }, { x: cx - canopySize * 0.1, y: 80 - trunkHeight - canopySize * 0.5 }, { x: cx + canopySize * 0.15, y: 80 - trunkHeight - canopySize * 0.6 }];
               return (
                 <g key={`tree-${index}`}>
                   {index === 0 && effScore === 0 && <><ellipse cx={cx} cy="85" rx={5} ry={3} fill={seedFill} /><path d={`M ${cx} 85 Q ${cx+5} 80 ${cx+8} 75 Q ${cx+3} 78 ${cx} 85 Z`} fill="#16a34a" /></>}
@@ -245,9 +245,9 @@
               <svg width="70" height="50" viewBox="0 0 70 50">
                 <path d="M 25 25 L 20 45 L 30 45 Z" fill="#1e3a8a" /><path d="M 45 25 L 40 45 L 50 45 Z" fill="#1e3a8a" />
                 <path d="M 12 43 h 18 v 7 h -18 z" rx="3" fill="#451a03" /><path d="M 40 43 h 18 v 7 h -18 z" rx="3" fill="#451a03" />
-                <path d={stars >= 4 ? "M 20 18 Q 5 25 8 38" : "M 20 18 Q 10 25 15 35"} fill="none" stroke="#fcd34d" strokeWidth="7" strokeLinecap="round" />
+                <path d={stars >= 4 ? "M 20 18 Q 5 25 8 38" : "M 20 18 Q 10 25 15 35"} fill="none" stroke="#fcd34d" strokeWidth="6" strokeLinecap="round" />
                 {stars >= 4 && <circle cx="8" cy="38" r="5" fill="#f8fafc" stroke="#cbd5e1" strokeWidth="1" />}
-                <path d={stars >= 12 ? "M 50 18 Q 65 25 62 38" : "M 50 18 Q 60 25 55 35"} fill="none" stroke="#fcd34d" strokeWidth="7" strokeLinecap="round" />
+                <path d={stars >= 12 ? "M 50 18 Q 65 25 62 38" : "M 50 18 Q 60 25 55 35"} fill="none" stroke="#fcd34d" strokeWidth="6" strokeLinecap="round" />
                 {stars >= 4 && <circle cx={stars >= 12 ? "62" : "55"} cy={stars >= 12 ? "38" : "35"} r="5" fill="#f8fafc" stroke="#cbd5e1" strokeWidth="1" /> }
                 <rect x="20" y="15" width="30" height="20" rx="6" fill={stars >= 20 ? "#fef08a" : "#d1fae5"} />
                 <path d="M 22 25 L 22 35 C 22 45 48 45 48 35 L 48 25 Z" fill={stars >= 20 ? "#eab308" : "#3b82f6"} /><rect x="22" y="20" width="26" height="15" rx="3" fill={stars >= 20 ? "#eab308" : "#3b82f6"} />
@@ -269,7 +269,7 @@
       const [newFeedbackText, setNewFeedbackText] = useState(''), [newFeedbackType, setNewFeedbackType] = useState('good'), [newKudoStars, setNewKudoStars] = useState(5), [newKudoText, setNewKudoText] = useState('');
       const [filterAuthorId, setFilterAuthorId] = useState(''), [newKudoReceiver, setNewKudoReceiver] = useState(''), [isManagingParticipants, setIsManagingParticipants] = useState(false), [tempParticipants, setTempParticipants] = useState([]), [activeSection, setActiveSection] = useState('intro');
 
-      const isAdmin = user?.email && (adminsList.includes(user.email) || ADMIN_EMAILS.includes(user.email));
+      const isAdmin = user?.email && (adminsList.includes(user.email));
       const highlightContainerRef = useRef(null);
 
       useEffect(() => {
@@ -359,32 +359,20 @@
       
       const handleExportCSV = () => {
         if (!selectedSprintId) return;
-        
-        // Prepare Headers
         let csvContent = "Category,Type/Stars,Author/From,Recipient,Content,Date\n";
-        
-        // Add Feedbacks
         sprintFeedbacks.forEach(fb => {
           const type = fb.type === 'good' ? 'Went Well' : 'To Improve';
-          const content = fb.text.replace(/"/g, '""'); // Escape quotes
-          const date = new Date(fb.createdAt).toLocaleDateString();
-          csvContent += `Feedback,${type},"${fb.authorName}",,"${content}",${date}\n`;
+          const content = fb.text.replace(/"/g, '""');
+          csvContent += `Feedback,${type},"${fb.authorName}",,"${content}",${new Date(fb.createdAt).toLocaleDateString()}\n`;
         });
-        
-        // Add Kudos
         sprintKudos.forEach(k => {
           const content = (k.text || "").replace(/"/g, '""');
-          const date = new Date(k.createdAt).toLocaleDateString();
-          csvContent += `Kudos,${k.stars} Stars,"${k.fromUserName}","${k.toUserName}","${content}",${date}\n`;
+          csvContent += `Kudos,${k.stars} Stars,"${k.fromUserName}","${k.toUserName}","${content}",${new Date(k.createdAt).toLocaleDateString()}\n`;
         });
-        
-        // Download logic
         const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
         const link = document.createElement("a");
-        const url = URL.createObjectURL(blob);
-        link.setAttribute("href", url);
+        link.setAttribute("href", URL.createObjectURL(blob));
         link.setAttribute("download", `ReTreeSpective_${activeSprint.name}.csv`);
-        link.style.visibility = 'hidden';
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
@@ -394,7 +382,7 @@
 
       if (loading) return <div className="min-h-screen bg-stone-50 flex items-center justify-center"><Loader2 className="animate-spin text-emerald-600" size={48} /></div>;
       if (!user) return (
-        <div className="min-h-screen bg-stone-50 flex items-center justify-center p-6"><div className="w-full max-w-md bg-white rounded-2xl shadow-sm border p-10 text-center"><div className="bg-emerald-50 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6"><TreePine size={40} className="text-emerald-600" /></div><h2 className="text-2xl font-bold mb-2 text-stone-800">ReTreeSpective</h2><p className="text-stone-500 mb-6">Sign in to begin.</p><button onClick={handleGoogleLogin} className="w-full bg-white border px-6 py-3 rounded-xl font-bold flex items-center justify-center gap-3 hover:bg-stone-50 shadow-sm transition-all text-stone-700">Sign in with Google</button>{authError && <p className="mt-4 text-red-500 text-sm">{authError}</p>}</div></div>
+        <div className="min-h-screen bg-stone-50 flex items-center justify-center p-6"><div className="w-full max-w-md bg-white rounded-2xl shadow-sm border p-10 text-center"><div className="bg-emerald-50 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6"><TreePine size={40} className="text-emerald-600" /></div><h2 className="text-2xl font-bold mb-2">ReTreeSpective</h2><p className="text-stone-500 mb-6">Sign in to begin.</p><button onClick={handleGoogleLogin} className="w-full bg-white border px-6 py-3 rounded-xl font-bold flex items-center justify-center gap-3 hover:bg-stone-50 shadow-sm transition-all text-stone-700">Sign in with Google</button>{authError && <p className="mt-4 text-red-500 text-sm">{authError}</p>}</div></div>
       );
 
       const gardeners = activeGardenersList.map(u => ({ ...u, stars: sprintKudos.filter(k => k.toUserId === u.uid).reduce((sum, k) => sum + k.stars, 0) }));
@@ -463,7 +451,7 @@
                   <section className="h-full snap-start flex items-center justify-center p-6"><div className="bg-white/40 backdrop-blur-xl p-10 rounded-[3rem] border border-white shadow-2xl max-w-lg text-center"><h2 className="text-4xl font-black text-emerald-950">{spotlightUser?.displayName}'s Highlight</h2><p className="text-emerald-900 font-bold mt-4 text-xl">Reviewing garden growth this sprint.</p></div></section>
                   <section className="h-full snap-start flex flex-col p-6 lg:p-12"><div className="flex-1 bg-white/40 backdrop-blur-xl border border-white shadow-2xl rounded-[3rem] flex flex-col overflow-hidden"><div className="p-8 bg-emerald-500/20 border-b border-emerald-500/20 flex items-center gap-4"><Leaf size={32} className="text-emerald-700" /><h3 className="text-3xl font-black text-emerald-950 uppercase">Went Well</h3></div><div className="flex-1 overflow-y-auto p-8 space-y-6">{displayedGood.map(fb => <div key={fb.id} className="bg-white/80 p-6 rounded-3xl shadow-sm border border-emerald-100 relative group transition-transform hover:-translate-y-1"><p className="text-emerald-950 text-lg font-medium">{fb.text}</p>{(user.uid === fb.authorId || isAdmin) && <button onClick={() => deleteItem('feedbacks', fb.id)} className="absolute top-4 right-4 text-stone-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"><Trash2 size={20} /></button>}</div>)}</div></div></section>
                   <section className="h-full snap-start flex flex-col p-6 lg:p-12"><div className="flex-1 bg-white/40 backdrop-blur-xl border border-white shadow-2xl rounded-[3rem] flex flex-col overflow-hidden"><div className="p-8 bg-amber-500/20 border-b border-amber-500/20 flex items-center gap-4"><Wind size={32} className="text-amber-700" /><h3 className="text-3xl font-black text-amber-950 uppercase">To Improve</h3></div><div className="flex-1 overflow-y-auto p-8 space-y-6">{displayedBad.map(fb => <div key={fb.id} className="bg-white/80 p-6 rounded-3xl shadow-sm border border-amber-100 relative group transition-transform hover:-translate-y-1"><p className="text-amber-950 text-lg font-medium">{fb.text}</p>{(user.uid === fb.authorId || isAdmin) && <button onClick={() => deleteItem('feedbacks', fb.id)} className="absolute top-4 right-4 text-stone-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"><Trash2 size={20} /></button>}</div>)}</div></div></section>
-                  <section className="h-full snap-start flex flex-col p-6 lg:p-12"><div className="flex-1 bg-white/40 backdrop-blur-xl border border-white shadow-2xl rounded-[3rem] flex flex-col overflow-hidden"><div className="p-8 bg-blue-500/20 border-b border-blue-500/20 flex items-center justify-between shrink-0"><div className="flex items-center gap-4"><Star size={32} className="text-blue-700 fill-blue-700" /><h3 className="text-3xl font-black text-blue-950 uppercase">Team Kudos</h3></div><div className="bg-blue-600 text-white px-5 py-2 rounded-2xl text-xl font-black shadow-lg">{spotlightStars} ★</div></div><div className="p-6 bg-white/20 border-b border-white/40"><form onSubmit={addKudo} className="flex gap-3"><input type="text" value={newKudoText} onChange={(e) => setNewKudoText(e.target.value)} placeholder="Say something nice..." className="flex-1 bg-white border border-blue-100 rounded-2xl px-6 py-4 text-lg font-medium outline-none" /><button type="submit" disabled={!newKudoText.trim()} className="bg-blue-600 text-white px-8 rounded-2xl font-black uppercase shadow-md">Send</button></form></div><div className="flex-1 overflow-y-auto p-8 space-y-6">{spotlightKudosList.map(k => <div key={k.id} className="bg-white/80 p-6 rounded-3xl shadow-sm flex justify-between items-start gap-6 relative group"><div><p className="text-blue-950 text-xl font-bold italic">"{k.text}"</p><p className="text-xs text-blue-800/60 mt-3 font-black uppercase">From {k.fromUserName}</p></div><div className="flex text-yellow-400 shrink-0">{[...Array(5)].map((_, i) => <Star key={i} size={20} className={i < k.stars ? "fill-current" : "text-stone-200"} />)}</div>{(user.uid === k.fromUserId || isAdmin) && <button onClick={() => deleteItem('kudos', k.id)} className="absolute top-4 right-4 text-stone-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"><Trash2 size={20} /></button>}</div>)}</div></div></section>
+                  <section className="h-full snap-start flex flex-col p-6 lg:p-12"><div className="flex-1 bg-white/40 backdrop-blur-xl border border-white shadow-2xl rounded-[3rem] flex flex-col overflow-hidden"><div className="p-8 bg-blue-500/20 border-b border-blue-500/20 flex items-center justify-between shrink-0"><div className="flex items-center gap-4"><Star size={32} className="text-blue-700 fill-blue-700" /><h3 className="text-3xl font-black text-blue-950 uppercase">Team Kudos</h3></div><div className="bg-blue-600 text-white px-5 py-2 rounded-2xl text-xl font-black shadow-lg">{spotlightStars} ★</div></div><div className="p-6 bg-white/20 border-b border-white/40"><form onSubmit={addKudo} className="flex gap-3"><input type="text" value={newKudoText} onChange={(e) => setNewKudoText(e.target.value)} placeholder="Say something nice..." className="flex-1 bg-white border border-blue-100 rounded-2xl px-6 py-4 text-lg font-medium outline-none" /><button type="submit" disabled={!newKudoText.trim()} className="bg-blue-600 text-white px-8 rounded-2xl font-black uppercase shadow-md">Send</button></form></div><div className="flex-1 overflow-y-auto p-8 space-y-6">{spotlightKudosList.map(k => <div key={k.id} className="bg-white/80 p-6 rounded-3xl shadow-sm flex justify-between items-start gap-6 relative group transition-transform hover:-translate-y-1"><div><p className="text-blue-950 text-xl font-bold italic">"{k.text}"</p><p className="text-xs text-blue-800/60 mt-3 font-black uppercase">From {k.fromUserName}</p></div><div className="flex text-yellow-400 shrink-0">{[...Array(5)].map((_, i) => <Star key={i} size={20} className={i < k.stars ? "fill-current" : "text-stone-200"} />)}</div>{(user.uid === k.fromUserId || isAdmin) && <button onClick={() => deleteItem('kudos', k.id)} className="absolute top-4 right-4 text-stone-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"><Trash2 size={20} /></button>}</div>)}</div></div></section>
                 </div>
               </div>
             ) : (
@@ -471,7 +459,7 @@
                 <div className="w-full flex flex-col z-10 h-[350px] md:h-[450px]"><div className="bg-white/95 rounded-3xl shadow-md border p-4 flex flex-col h-full overflow-hidden"><div className="flex items-center justify-between mb-4 z-30 px-4"><h3 className="text-xl font-extrabold text-emerald-900 flex items-center gap-2"><TreePine className="text-emerald-600" /> Sprint Garden</h3><div className="flex items-center space-x-3 text-sm font-bold bg-white px-4 py-1.5 rounded-full shadow-sm"><span className="text-emerald-600 flex items-center gap-1"><Leaf size={14}/> {displayedGood.length}</span><div className="w-px h-3 bg-stone-300"></div><span className="text-amber-600 flex items-center gap-1"><Wind size={14}/> {displayedBad.length}</span></div></div><div className={`relative flex-1 w-full rounded-2xl overflow-hidden shadow-inner border transition-colors duration-1000 ${skyGrad}`}><WeatherOverlay isWindy={isWindy} isRainy={isRainy} isStormy={isStormy} /><BirdFlock netScore={netScore} /><div className={`absolute w-32 h-32 rounded-full pointer-events-none transition-all duration-1000 ${sunCls}`}></div><div className="absolute bottom-0 left-0 w-full h-[75%] pointer-events-none flex items-end justify-center"><TreeOfProgress goodCount={displayedGood.length} badCount={displayedBad.length} /></div><div className="absolute inset-0 z-20 overflow-x-auto overflow-y-hidden flex items-end"><div className="flex flex-nowrap items-end px-12 pb-12 mx-auto min-w-max h-full pt-10">{gardeners.sort((a,b) => b.stars - a.stars).map((g, idx) => <div key={g.uid} onClick={() => setFilterAuthorId(g.uid)}><GardenerAvatar user={g} stars={g.stars} totalGardeners={gardeners.length} index={idx} /></div>)}</div></div></div></div></div>
                 <div className="w-full grid grid-cols-1 lg:grid-cols-3 gap-6">
                   <div className="bg-emerald-50/50 rounded-3xl border flex flex-col h-[500px] shadow-sm"><div className="p-4 border-b bg-emerald-100/50 flex items-center gap-2 rounded-t-3xl"><Leaf size={20} className="text-emerald-600" /><h2 className="font-bold">Went Well</h2></div><div className="p-3 bg-white/60 border-b"><form onSubmit={addFeedback} className="flex gap-2"><input type="text" value={newFeedbackType === 'good' ? newFeedbackText : ''} onChange={(e) => { setNewFeedbackType('good'); setNewFeedbackText(e.target.value); }} placeholder="Add a win..." className="flex-1 bg-white border border-stone-100 rounded-xl px-3 py-2 text-sm outline-none" /><button type="submit" className="bg-emerald-600 text-white p-2 rounded-xl" disabled={newFeedbackType!=='good' || !newFeedbackText.trim()}><Plus size={20} /></button></form></div><div className="p-4 overflow-y-auto flex-1 space-y-3">{displayedGood.map(fb => <div key={fb.id} className="bg-white p-4 rounded-2xl shadow-sm border border-emerald-100 relative group"><p className="text-stone-800 text-sm whitespace-pre-wrap">{fb.text}</p><div className="mt-3 flex items-center space-x-2 text-xs text-stone-500">{fb.authorPhoto ? <img src={fb.authorPhoto} className="w-5 h-5 rounded-full" /> : <UserCircle size={20} />}<span>{fb.authorName}</span></div>{(user.uid === fb.authorId || isAdmin) && <button onClick={() => deleteItem('feedbacks', fb.id)} className="absolute top-3 right-3 text-stone-300 opacity-0 group-hover:opacity-100 transition-opacity"><Trash2 size={16} /></button>}</div>)}</div></div>
-                  <div className="bg-amber-50/50 rounded-3xl border flex flex-col h-[500px] shadow-sm"><div className="p-4 border-b bg-amber-100/50 flex items-center gap-2 rounded-t-3xl"><Wind size={20} className="text-amber-600" /><h2 className="font-bold">To Improve</h2></div><div className="p-3 bg-white/60 border-b"><form onSubmit={addFeedback} className="flex gap-2"><input type="text" value={newFeedbackType === 'bad' ? newFeedbackText : ''} onChange={(e) => { setNewFeedbackType('bad'); setNewFeedbackText(e.target.value); }} placeholder="Add an obstacle..." className="flex-1 bg-white border rounded-lg px-3 py-2 text-sm outline-none" /><button type="submit" className="bg-amber-600 text-white p-2 rounded-xl" disabled={newFeedbackType!=='bad' || !newFeedbackText.trim()}><Plus size={20} /></button></form></div><div className="p-4 overflow-y-auto flex-1 space-y-3">{displayedBad.map(fb => <div key={fb.id} className="bg-white p-4 rounded-2xl shadow-sm border border-amber-100 relative group"><p className="text-stone-800 text-sm whitespace-pre-wrap">{fb.text}</p><div className="mt-3 flex items-center space-x-2 text-xs text-stone-500">{fb.authorPhoto ? <img src={fb.authorPhoto} className="w-5 h-5 rounded-full" /> : <UserCircle size={20} />}<span>{fb.authorName}</span></div>{(user.uid === fb.authorId || isAdmin) && <button onClick={() => deleteItem('feedbacks', fb.id)} className="absolute top-3 right-3 text-stone-300 opacity-0 group-hover:opacity-100 transition-opacity"><Trash2 size={16} /></button>}</div>)}</div></div>
+                  <div className="bg-amber-50/50 rounded-3xl border flex flex-col h-[500px] shadow-sm"><div className="p-4 border-b bg-amber-100/50 flex items-center gap-2 rounded-t-3xl"><Wind size={20} className="text-amber-600" /><h2 className="font-bold">To Improve</h2></div><div className="p-3 bg-white/60 border-b"><form onSubmit={addFeedback} className="flex gap-2"><input type="text" value={newFeedbackType === 'bad' ? newFeedbackText : ''} onChange={(e) => { setNewFeedbackType('bad'); setNewFeedbackText(e.target.value); }} placeholder="Add an obstacle..." className="flex-1 bg-white border border-stone-100 rounded-xl px-3 py-2 text-sm outline-none" /><button type="submit" className="bg-amber-600 text-white p-2 rounded-xl" disabled={newFeedbackType!=='bad' || !newFeedbackText.trim()}><Plus size={20} /></button></form></div><div className="p-4 overflow-y-auto flex-1 space-y-3">{displayedBad.map(fb => <div key={fb.id} className="bg-white p-4 rounded-2xl shadow-sm border border-amber-100 relative group"><p className="text-stone-800 text-sm whitespace-pre-wrap">{fb.text}</p><div className="mt-3 flex items-center space-x-2 text-xs text-stone-500">{fb.authorPhoto ? <img src={fb.authorPhoto} className="w-5 h-5 rounded-full" /> : <UserCircle size={20} />}<span>{fb.authorName}</span></div>{(user.uid === fb.authorId || isAdmin) && <button onClick={() => deleteItem('feedbacks', fb.id)} className="absolute top-3 right-3 text-stone-300 opacity-0 group-hover:opacity-100 transition-opacity"><Trash2 size={16} /></button>}</div>)}</div></div>
                   <div className="bg-blue-50/50 rounded-3xl border flex flex-col h-[500px] shadow-sm"><div className="p-4 border-b bg-blue-100/50 flex items-center gap-2 rounded-t-3xl"><Star size={20} className="text-blue-600 fill-blue-600" /><h2 className="font-bold">Team Kudos</h2></div><div className="p-3 bg-white/60 border-b"><form onSubmit={addKudo} className="space-y-2"><div className="flex gap-2"><select value={newKudoReceiver} onChange={(e) => setNewKudoReceiver(e.target.value)} className="flex-1 bg-white border border-stone-100 rounded-xl px-2 py-2 text-sm outline-none"><option value="">Select colleague...</option>{activeGardenersList.filter(u => u.uid !== user.uid).map(u => <option key={u.uid} value={u.uid}>{u.displayName}</option>)}</select><select value={newKudoStars} onChange={(e) => setNewKudoStars(Number(e.target.value))} className="w-16 bg-white border border-stone-100 rounded-xl px-2 py-2 text-sm outline-none">{[5,4,3,2,1].map(n => <option key={n} value={n}>{n} ★</option>)}</select></div><div className="flex gap-2"><input type="text" value={newKudoText} onChange={(e) => setNewKudoText(e.target.value)} placeholder="Say something nice..." className="flex-1 bg-white border border-stone-100 rounded-xl px-3 py-2 text-sm outline-none" /><button type="submit" disabled={!newKudoReceiver || !newKudoText.trim()} className="bg-blue-600 text-white p-2 rounded-xl"><Plus size={20} /></button></div></form></div><div className="p-4 overflow-y-auto flex-1 space-y-3">{sprintKudos.map(k => <div key={k.id} className="bg-white p-4 rounded-2xl shadow-sm border border-blue-100 relative group"><div className="flex justify-between items-center mb-2"><div className="flex items-center space-x-2">{k.toUserPhoto ? <img src={k.toUserPhoto} className="w-6 h-6 rounded-full" /> : <UserCircle size={24} />}<span className="font-bold text-sm">{k.toUserName}</span></div><div className="flex text-yellow-400">{[...Array(5)].map((_, i) => <Star key={i} size={14} className={i < k.stars ? "fill-current" : "text-stone-200"} />)}</div></div><p className="text-stone-600 text-sm italic">"{k.text}"</p><div className="mt-3 text-xs text-stone-400 pt-2 border-t">From: {k.fromUserName}</div>{(user.uid === k.fromUserId || isAdmin) && <button onClick={() => deleteItem('kudos', k.id)} className="absolute top-3 right-3 text-stone-300 opacity-0 group-hover:opacity-100 transition-opacity"><Trash2 size={16} /></button>}</div>)}</div></div>
                 </div>
               </div>
